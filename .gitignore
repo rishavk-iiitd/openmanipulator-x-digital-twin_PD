@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environment
+venv/
+
+# Experiment output (regenerable by re-running any lab; gain-history JSON
+# files at the repo root are kept -- they're the compact index of every run)
+plots/
+
+# Office / LibreOffice lock files
+~$*
+.~lock.*#
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Editors
+.vscode/
+.idea/

@@ -1,0 +1,1872 @@
+[
+  {
+    "timestamp": "2026-07-06 16:32:00",
+    "kp": [
+      5.0,
+      5.0,
+      5.0,
+      5.0
+    ],
+    "kd": [
+      0.6000000238418579,
+      0.6000000238418579,
+      0.6000000238418579,
+      0.6000000238418579
+    ],
+    "mode": "simulated",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_163200.png"
+  },
+  {
+    "timestamp": "2026-07-06 16:32:16",
+    "kp": [
+      150.0,
+      150.0,
+      150.0,
+      150.0
+    ],
+    "kd": [
+      15.0,
+      15.0,
+      15.0,
+      15.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_163215.png"
+  },
+  {
+    "timestamp": "2026-07-06 16:32:32",
+    "kp": [
+      150.0,
+      150.0,
+      150.0,
+      150.0
+    ],
+    "kd": [
+      15.0,
+      15.0,
+      15.0,
+      15.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_163231.png"
+  },
+  {
+    "timestamp": "2026-07-06 16:32:55",
+    "kp": [
+      2000.0,
+      150.0,
+      150.0,
+      150.0
+    ],
+    "kd": [
+      15.0,
+      15.0,
+      15.0,
+      15.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_163255.png"
+  },
+  {
+    "timestamp": "2026-07-06 17:15:46",
+    "kp": [
+      300.0,
+      350.0,
+      350.0,
+      300.0
+    ],
+    "kd": [
+      20.0,
+      25.0,
+      25.0,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_171546.png"
+  },
+  {
+    "timestamp": "2026-07-06 17:16:01",
+    "kp": [
+      301.0,
+      361.0,
+      350.0,
+      300.0
+    ],
+    "kd": [
+      20.0,
+      25.0,
+      25.0,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_171600.png"
+  },
+  {
+    "timestamp": "2026-07-06 17:16:21",
+    "kp": [
+      301.0,
+      361.0,
+      350.0,
+      300.0
+    ],
+    "kd": [
+      20.0,
+      28.80001449584961,
+      25.0,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_171621.png"
+  },
+  {
+    "timestamp": "2026-07-06 17:16:33",
+    "kp": [
+      301.0,
+      361.0,
+      350.0,
+      300.0
+    ],
+    "kd": [
+      20.0,
+      50.0,
+      25.0,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_171633.png"
+  },
+  {
+    "timestamp": "2026-07-06 17:17:19",
+    "kp": [
+      301.0,
+      361.0,
+      350.0,
+      300.0
+    ],
+    "kd": [
+      20.0,
+      50.0,
+      25.0,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_171718.png"
+  },
+  {
+    "timestamp": "2026-07-06 17:44:30",
+    "kp": [
+      300.0,
+      350.0,
+      350.0,
+      300.0
+    ],
+    "kd": [
+      20.0,
+      25.0,
+      25.0,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_174430.png"
+  },
+  {
+    "timestamp": "2026-07-06 17:46:12",
+    "kp": [
+      300.0,
+      350.0,
+      350.0,
+      300.0
+    ],
+    "kd": [
+      20.0,
+      25.0,
+      25.0,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_174611.png"
+  },
+  {
+    "timestamp": "2026-07-06 17:46:58",
+    "kp": [
+      300.0,
+      350.0,
+      350.0,
+      300.0
+    ],
+    "kd": [
+      20.0,
+      25.0,
+      25.0,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_174657.png"
+  },
+  {
+    "timestamp": "2026-07-06 17:47:19",
+    "kp": [
+      300.0,
+      400.0,
+      350.0,
+      300.0
+    ],
+    "kd": [
+      20.0,
+      25.0,
+      25.0,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_174719.png"
+  },
+  {
+    "timestamp": "2026-07-06 17:47:38",
+    "kp": [
+      300.0,
+      400.0,
+      400.0,
+      300.0
+    ],
+    "kd": [
+      20.0,
+      25.0,
+      25.0,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_174738.png"
+  },
+  {
+    "timestamp": "2026-07-06 17:48:12",
+    "kp": [
+      300.0,
+      400.5,
+      408.0,
+      303.5
+    ],
+    "kd": [
+      20.0,
+      25.0,
+      28.600013732910156,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_174811.png"
+  },
+  {
+    "timestamp": "2026-07-06 17:48:22",
+    "kp": [
+      300.0,
+      400.5,
+      408.0,
+      303.5
+    ],
+    "kd": [
+      20.0,
+      25.0,
+      31.10002326965332,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_174822.png"
+  },
+  {
+    "timestamp": "2026-07-06 17:48:37",
+    "kp": [
+      300.0,
+      400.5,
+      408.0,
+      303.5
+    ],
+    "kd": [
+      22.100008010864258,
+      25.0,
+      31.10002326965332,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_174837.png"
+  },
+  {
+    "timestamp": "2026-07-06 17:49:06",
+    "kp": [
+      301.5,
+      400.5,
+      408.0,
+      303.5
+    ],
+    "kd": [
+      23.50001335144043,
+      25.0,
+      31.10002326965332,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_174905.png"
+  },
+  {
+    "timestamp": "2026-07-06 17:49:41",
+    "kp": [
+      301.5,
+      400.5,
+      408.0,
+      303.5
+    ],
+    "kd": [
+      23.50001335144043,
+      27.800010681152344,
+      31.10002326965332,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_174940.png"
+  },
+  {
+    "timestamp": "2026-07-06 17:50:02",
+    "kp": [
+      301.5,
+      400.5,
+      408.0,
+      303.5
+    ],
+    "kd": [
+      23.50001335144043,
+      27.800010681152344,
+      31.10002326965332,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_175002.png"
+  },
+  {
+    "timestamp": "2026-07-06 17:50:23",
+    "kp": [
+      301.5,
+      400.5,
+      408.0,
+      303.5
+    ],
+    "kd": [
+      23.50001335144043,
+      27.800010681152344,
+      31.10002326965332,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_175022.png"
+  },
+  {
+    "timestamp": "2026-07-06 17:51:21",
+    "kp": [
+      301.5,
+      400.5,
+      408.0,
+      303.5
+    ],
+    "kd": [
+      23.50001335144043,
+      27.800010681152344,
+      40.0,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_175121.png"
+  },
+  {
+    "timestamp": "2026-07-06 17:51:50",
+    "kp": [
+      301.5,
+      400.5,
+      500.0,
+      303.5
+    ],
+    "kd": [
+      23.50001335144043,
+      27.800010681152344,
+      40.0,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_175149.png"
+  },
+  {
+    "timestamp": "2026-07-06 17:52:33",
+    "kp": [
+      301.5,
+      400.5,
+      500.0,
+      303.5
+    ],
+    "kd": [
+      23.50001335144043,
+      27.800010681152344,
+      400.0,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_175233.png"
+  },
+  {
+    "timestamp": "2026-07-06 17:53:01",
+    "kp": [
+      301.5,
+      400.5,
+      500.0,
+      303.5
+    ],
+    "kd": [
+      23.50001335144043,
+      27.800010681152344,
+      40.0,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_175300.png"
+  },
+  {
+    "timestamp": "2026-07-06 17:53:19",
+    "kp": [
+      301.5,
+      400.5,
+      5000.0,
+      303.5
+    ],
+    "kd": [
+      23.50001335144043,
+      27.800010681152344,
+      40.0,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_175319.png"
+  },
+  {
+    "timestamp": "2026-07-06 17:53:39",
+    "kp": [
+      301.5,
+      400.5,
+      5000.0,
+      303.5
+    ],
+    "kd": [
+      23.50001335144043,
+      27.800010681152344,
+      4.0,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_175338.png"
+  },
+  {
+    "timestamp": "2026-07-06 17:53:56",
+    "kp": [
+      301.5,
+      400.5,
+      500.0,
+      303.5
+    ],
+    "kd": [
+      23.50001335144043,
+      27.800010681152344,
+      4.0,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_175355.png"
+  },
+  {
+    "timestamp": "2026-07-06 17:54:12",
+    "kp": [
+      301.5,
+      400.5,
+      600.0,
+      303.5
+    ],
+    "kd": [
+      23.50001335144043,
+      27.800010681152344,
+      4.0,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_175412.png"
+  },
+  {
+    "timestamp": "2026-07-06 17:54:35",
+    "kp": [
+      301.5,
+      400.5,
+      800.0,
+      303.5
+    ],
+    "kd": [
+      23.50001335144043,
+      27.800010681152344,
+      4.0,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_175435.png"
+  },
+  {
+    "timestamp": "2026-07-06 17:55:22",
+    "kp": [
+      301.5,
+      400.5,
+      700.0,
+      303.5
+    ],
+    "kd": [
+      23.50001335144043,
+      27.800010681152344,
+      4.0,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_175522.png"
+  },
+  {
+    "timestamp": "2026-07-06 17:55:57",
+    "kp": [
+      301.5,
+      400.5,
+      700.0,
+      303.5
+    ],
+    "kd": [
+      23.50001335144043,
+      27.800010681152344,
+      0.03999999910593033,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_175556.png"
+  },
+  {
+    "timestamp": "2026-07-06 17:56:15",
+    "kp": [
+      301.5,
+      400.5,
+      700.0,
+      303.5
+    ],
+    "kd": [
+      23.50001335144043,
+      27.800010681152344,
+      10.0,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_175614.png"
+  },
+  {
+    "timestamp": "2026-07-06 17:56:24",
+    "kp": [
+      301.5,
+      400.5,
+      700.0,
+      303.5
+    ],
+    "kd": [
+      23.50001335144043,
+      27.800010681152344,
+      10.0,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_175624.png"
+  },
+  {
+    "timestamp": "2026-07-06 17:57:05",
+    "kp": [
+      301.5,
+      400.5,
+      700.0,
+      303.5
+    ],
+    "kd": [
+      23.50001335144043,
+      27.800010681152344,
+      10.0,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_175704.png"
+  },
+  {
+    "timestamp": "2026-07-06 17:57:14",
+    "kp": [
+      301.5,
+      400.5,
+      700.0,
+      303.5
+    ],
+    "kd": [
+      23.50001335144043,
+      27.800010681152344,
+      4.0,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_175713.png"
+  },
+  {
+    "timestamp": "2026-07-06 17:58:12",
+    "kp": [
+      301.5,
+      400.5,
+      400.0,
+      400.0
+    ],
+    "kd": [
+      23.50001335144043,
+      4.0,
+      4.0,
+      4.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_175812.png"
+  },
+  {
+    "timestamp": "2026-07-06 17:58:36",
+    "kp": [
+      301.5,
+      400.5,
+      400.0,
+      400.0
+    ],
+    "kd": [
+      23.50001335144043,
+      4.0,
+      4.6999993324279785,
+      4.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_175836.png"
+  },
+  {
+    "timestamp": "2026-07-06 17:58:58",
+    "kp": [
+      301.5,
+      400.5,
+      400.0,
+      400.0
+    ],
+    "kd": [
+      23.50001335144043,
+      4.0,
+      4.6999993324279785,
+      4.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_175858.png"
+  },
+  {
+    "timestamp": "2026-07-06 17:59:31",
+    "kp": [
+      301.5,
+      400.5,
+      400.0,
+      400.0
+    ],
+    "kd": [
+      23.50001335144043,
+      4.0,
+      4.6999993324279785,
+      4.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_175930.png"
+  },
+  {
+    "timestamp": "2026-07-06 17:59:40",
+    "kp": [
+      301.5,
+      400.5,
+      400.0,
+      400.0
+    ],
+    "kd": [
+      23.50001335144043,
+      4.0,
+      4.6999993324279785,
+      4.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_175939.png"
+  },
+  {
+    "timestamp": "2026-07-06 18:00:19",
+    "kp": [
+      301.5,
+      400.5,
+      400.0,
+      400.0
+    ],
+    "kd": [
+      21.0,
+      30.0,
+      30.0,
+      30.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_180018.png"
+  },
+  {
+    "timestamp": "2026-07-06 18:01:09",
+    "kp": [
+      301.5,
+      400.5,
+      700.0,
+      600.0
+    ],
+    "kd": [
+      21.0,
+      30.0,
+      30.0,
+      30.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_180109.png"
+  },
+  {
+    "timestamp": "2026-07-06 18:01:38",
+    "kp": [
+      301.5,
+      400.5,
+      700.0,
+      600.0
+    ],
+    "kd": [
+      21.0,
+      30.0,
+      10.0,
+      30.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_180138.png"
+  },
+  {
+    "timestamp": "2026-07-06 18:02:02",
+    "kp": [
+      301.5,
+      400.5,
+      10000.0,
+      600.0
+    ],
+    "kd": [
+      21.0,
+      30.0,
+      10.0,
+      30.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_180202.png"
+  },
+  {
+    "timestamp": "2026-07-06 18:02:19",
+    "kp": [
+      301.5,
+      400.5,
+      100.0,
+      600.0
+    ],
+    "kd": [
+      21.0,
+      30.0,
+      10.0,
+      30.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_180219.png"
+  },
+  {
+    "timestamp": "2026-07-06 18:02:39",
+    "kp": [
+      301.5,
+      400.5,
+      1000.0,
+      600.0
+    ],
+    "kd": [
+      21.0,
+      30.0,
+      10.0,
+      30.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_180239.png"
+  },
+  {
+    "timestamp": "2026-07-06 18:03:00",
+    "kp": [
+      301.5,
+      400.5,
+      1500.0,
+      600.0
+    ],
+    "kd": [
+      21.0,
+      30.0,
+      10.0,
+      30.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_180300.png"
+  },
+  {
+    "timestamp": "2026-07-06 18:03:13",
+    "kp": [
+      301.5,
+      400.5,
+      2000.0,
+      600.0
+    ],
+    "kd": [
+      21.0,
+      30.0,
+      10.0,
+      30.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_180312.png"
+  },
+  {
+    "timestamp": "2026-07-06 18:03:37",
+    "kp": [
+      301.5,
+      400.5,
+      2000.0,
+      600.0
+    ],
+    "kd": [
+      21.0,
+      30.0,
+      30.0,
+      30.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_180337.png"
+  },
+  {
+    "timestamp": "2026-07-06 18:03:58",
+    "kp": [
+      301.5,
+      400.5,
+      2000.0,
+      600.0
+    ],
+    "kd": [
+      21.0,
+      30.0,
+      100.0,
+      30.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_180358.png"
+  },
+  {
+    "timestamp": "2026-07-06 18:04:15",
+    "kp": [
+      301.5,
+      400.5,
+      2000.0,
+      600.0
+    ],
+    "kd": [
+      21.0,
+      30.0,
+      100.0,
+      30.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_180415.png"
+  },
+  {
+    "timestamp": "2026-07-06 18:04:38",
+    "kp": [
+      301.5,
+      400.5,
+      2000.0,
+      600.0
+    ],
+    "kd": [
+      21.0,
+      30.0,
+      100.0,
+      80.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_180437.png"
+  },
+  {
+    "timestamp": "2026-07-06 18:04:56",
+    "kp": [
+      301.5,
+      400.5,
+      2000.0,
+      1200.0
+    ],
+    "kd": [
+      21.0,
+      30.0,
+      100.0,
+      80.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_180455.png"
+  },
+  {
+    "timestamp": "2026-07-06 18:05:20",
+    "kp": [
+      301.5,
+      400.5,
+      2000.0,
+      1200.0
+    ],
+    "kd": [
+      21.0,
+      30.0,
+      100.0,
+      100.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_180519.png"
+  },
+  {
+    "timestamp": "2026-07-06 18:05:39",
+    "kp": [
+      301.5,
+      400.5,
+      2000.0,
+      2000.0
+    ],
+    "kd": [
+      21.0,
+      30.0,
+      100.0,
+      100.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_180538.png"
+  },
+  {
+    "timestamp": "2026-07-06 18:05:59",
+    "kp": [
+      301.5,
+      400.5,
+      2000.0,
+      2000.0
+    ],
+    "kd": [
+      21.0,
+      30.0,
+      100.0,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_180559.png"
+  },
+  {
+    "timestamp": "2026-07-06 18:06:26",
+    "kp": [
+      301.5,
+      400.5,
+      2000.0,
+      800.0
+    ],
+    "kd": [
+      21.0,
+      30.0,
+      100.0,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_180626.png"
+  },
+  {
+    "timestamp": "2026-07-06 18:06:54",
+    "kp": [
+      301.5,
+      400.5,
+      2000.0,
+      3000.0
+    ],
+    "kd": [
+      21.0,
+      30.0,
+      100.0,
+      300.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_180653.png"
+  },
+  {
+    "timestamp": "2026-07-06 18:07:37",
+    "kp": [
+      301.5,
+      400.5,
+      2000.0,
+      2000.0
+    ],
+    "kd": [
+      21.0,
+      30.0,
+      100.0,
+      300.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_180737.png"
+  },
+  {
+    "timestamp": "2026-07-06 18:08:37",
+    "kp": [
+      301.5,
+      200.0,
+      2000.0,
+      20000.0
+    ],
+    "kd": [
+      21.0,
+      30.0,
+      100.0,
+      3000.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_180837.png"
+  },
+  {
+    "timestamp": "2026-07-06 18:09:10",
+    "kp": [
+      301.5,
+      200.0,
+      2000.0,
+      20000.0
+    ],
+    "kd": [
+      21.0,
+      30.0,
+      100.0,
+      3000.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_180910.png"
+  },
+  {
+    "timestamp": "2026-07-06 18:09:32",
+    "kp": [
+      301.5,
+      200.0,
+      2000.0,
+      200.0
+    ],
+    "kd": [
+      21.0,
+      30.0,
+      100.0,
+      3.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_180931.png"
+  },
+  {
+    "timestamp": "2026-07-06 18:09:46",
+    "kp": [
+      301.5,
+      200.0,
+      2000.0,
+      200.0
+    ],
+    "kd": [
+      21.0,
+      30.0,
+      50.0,
+      3.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_180946.png"
+  },
+  {
+    "timestamp": "2026-07-06 18:10:11",
+    "kp": [
+      301.5,
+      200.0,
+      2000.0,
+      150.0
+    ],
+    "kd": [
+      21.0,
+      30.0,
+      50.0,
+      1.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_181010.png"
+  },
+  {
+    "timestamp": "2026-07-06 18:10:35",
+    "kp": [
+      301.5,
+      200.0,
+      2000.0,
+      150.0
+    ],
+    "kd": [
+      21.0,
+      30.0,
+      50.0,
+      50.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_181034.png"
+  },
+  {
+    "timestamp": "2026-07-06 18:10:57",
+    "kp": [
+      301.5,
+      200.0,
+      2000.0,
+      150.0
+    ],
+    "kd": [
+      21.0,
+      30.0,
+      500.0,
+      50.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_181056.png"
+  },
+  {
+    "timestamp": "2026-07-06 18:11:18",
+    "kp": [
+      301.5,
+      200.0,
+      2000.0,
+      150.0
+    ],
+    "kd": [
+      21.0,
+      30.0,
+      150.0,
+      50.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_181117.png"
+  },
+  {
+    "timestamp": "2026-07-06 18:11:39",
+    "kp": [
+      301.5,
+      200.0,
+      2000.0,
+      150.0
+    ],
+    "kd": [
+      21.0,
+      30.0,
+      50.0,
+      50.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_181139.png"
+  },
+  {
+    "timestamp": "2026-07-06 18:12:01",
+    "kp": [
+      301.5,
+      200.0,
+      2000.0,
+      150.0
+    ],
+    "kd": [
+      21.0,
+      30.0,
+      100.0,
+      50.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_181201.png"
+  },
+  {
+    "timestamp": "2026-07-06 18:12:47",
+    "kp": [
+      301.5,
+      200.0,
+      1000.0,
+      150.0
+    ],
+    "kd": [
+      21.0,
+      30.0,
+      100.0,
+      50.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_181247.png"
+  },
+  {
+    "timestamp": "2026-07-06 18:13:18",
+    "kp": [
+      301.5,
+      350.0,
+      1000.0,
+      150.0
+    ],
+    "kd": [
+      21.0,
+      30.0,
+      100.0,
+      50.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_181318.png"
+  },
+  {
+    "timestamp": "2026-07-06 18:13:44",
+    "kp": [
+      301.5,
+      350.0,
+      1000.0,
+      150.0
+    ],
+    "kd": [
+      21.0,
+      30.0,
+      100.0,
+      50.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_181343.png"
+  },
+  {
+    "timestamp": "2026-07-06 18:15:02",
+    "kp": [
+      301.5,
+      350.0,
+      1000.0,
+      150.0
+    ],
+    "kd": [
+      21.0,
+      30.0,
+      100.0,
+      50.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_181501.png"
+  },
+  {
+    "timestamp": "2026-07-06 18:15:28",
+    "kp": [
+      301.5,
+      350.0,
+      1000.0,
+      150.0
+    ],
+    "kd": [
+      21.0,
+      50.0,
+      100.0,
+      50.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_181527.png"
+  },
+  {
+    "timestamp": "2026-07-06 18:15:58",
+    "kp": [
+      301.5,
+      350.0,
+      1000.0,
+      150.0
+    ],
+    "kd": [
+      21.0,
+      50.0,
+      100.0,
+      25.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_181557.png"
+  },
+  {
+    "timestamp": "2026-07-06 18:16:22",
+    "kp": [
+      301.5,
+      350.0,
+      1000.0,
+      150.0
+    ],
+    "kd": [
+      21.0,
+      50.0,
+      100.0,
+      25.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_181621.png"
+  },
+  {
+    "timestamp": "2026-07-06 18:17:06",
+    "kp": [
+      301.5,
+      350.0,
+      1000.0,
+      150.0
+    ],
+    "kd": [
+      21.0,
+      50.0,
+      100.0,
+      25.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_181706.png"
+  },
+  {
+    "timestamp": "2026-07-06 18:17:24",
+    "kp": [
+      301.5,
+      350.0,
+      1000.0,
+      150.0
+    ],
+    "kd": [
+      21.0,
+      50.0,
+      100.0,
+      25.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_181723.png"
+  },
+  {
+    "timestamp": "2026-07-06 18:17:47",
+    "kp": [
+      301.5,
+      350.0,
+      1000.0,
+      150.0
+    ],
+    "kd": [
+      21.0,
+      50.0,
+      100.0,
+      25.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_181746.png"
+  },
+  {
+    "timestamp": "2026-07-06 18:18:06",
+    "kp": [
+      301.5,
+      350.0,
+      1000.0,
+      150.0
+    ],
+    "kd": [
+      21.0,
+      50.0,
+      100.0,
+      50.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_181806.png"
+  },
+  {
+    "timestamp": "2026-07-06 18:18:25",
+    "kp": [
+      301.5,
+      350.0,
+      1000.0,
+      150.0
+    ],
+    "kd": [
+      21.0,
+      50.0,
+      100.0,
+      50.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_181825.png"
+  },
+  {
+    "timestamp": "2026-07-06 18:19:03",
+    "kp": [
+      301.5,
+      350.0,
+      1000.0,
+      150.0
+    ],
+    "kd": [
+      21.0,
+      50.0,
+      100.0,
+      50.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_181903.png"
+  },
+  {
+    "timestamp": "2026-07-06 18:19:10",
+    "kp": [
+      301.5,
+      350.0,
+      1000.0,
+      150.0
+    ],
+    "kd": [
+      21.0,
+      50.0,
+      100.0,
+      50.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_181910.png"
+  },
+  {
+    "timestamp": "2026-07-06 18:19:30",
+    "kp": [
+      301.5,
+      350.0,
+      1000.0,
+      150.0
+    ],
+    "kd": [
+      21.0,
+      50.0,
+      100.0,
+      50.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_181930.png"
+  },
+  {
+    "timestamp": "2026-07-06 18:20:00",
+    "kp": [
+      301.5,
+      350.0,
+      1000.0,
+      350.0
+    ],
+    "kd": [
+      21.0,
+      50.0,
+      100.0,
+      50.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_182000.png"
+  },
+  {
+    "timestamp": "2026-07-06 18:20:20",
+    "kp": [
+      301.5,
+      350.0,
+      1000.0,
+      350.0
+    ],
+    "kd": [
+      21.0,
+      50.0,
+      100.0,
+      50.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_182020.png"
+  },
+  {
+    "timestamp": "2026-07-06 18:20:38",
+    "kp": [
+      301.5,
+      350.0,
+      1000.0,
+      150.0
+    ],
+    "kd": [
+      21.0,
+      50.0,
+      100.0,
+      50.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_182038.png"
+  },
+  {
+    "timestamp": "2026-07-06 18:21:14",
+    "kp": [
+      301.5,
+      350.0,
+      1000.0,
+      150.0
+    ],
+    "kd": [
+      21.0,
+      50.0,
+      100.0,
+      50.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_182114.png"
+  },
+  {
+    "timestamp": "2026-07-06 18:23:32",
+    "kp": [
+      300.0,
+      350.0,
+      350.0,
+      300.0
+    ],
+    "kd": [
+      20.0,
+      25.0,
+      25.0,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_182331.png"
+  },
+  {
+    "timestamp": "2026-07-06 18:35:30",
+    "kp": [
+      300.0,
+      350.0,
+      350.0,
+      300.0
+    ],
+    "kd": [
+      20.0,
+      25.0,
+      25.0,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_183529.png"
+  },
+  {
+    "timestamp": "2026-07-06 18:36:30",
+    "kp": [
+      300.0,
+      350.0,
+      350.0,
+      300.0
+    ],
+    "kd": [
+      20.0,
+      25.0,
+      25.0,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260706_183629.png"
+  },
+  {
+    "timestamp": "2026-07-10 16:22:39",
+    "kp": [
+      300.0,
+      350.0,
+      350.0,
+      300.0
+    ],
+    "kd": [
+      20.0,
+      25.0,
+      25.0,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260710_162238.png"
+  },
+  {
+    "timestamp": "2026-07-10 16:23:54",
+    "kp": [
+      300.0,
+      350.0,
+      1000.0,
+      150.0
+    ],
+    "kd": [
+      20.0,
+      50.0,
+      100.0,
+      50.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260710_162354.png"
+  },
+  {
+    "timestamp": "2026-07-10 16:24:49",
+    "kp": [
+      300.0,
+      350.0,
+      1000.0,
+      150.0
+    ],
+    "kd": [
+      20.0,
+      50.0,
+      100.0,
+      50.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260710_162448.png"
+  },
+  {
+    "timestamp": "2026-07-10 16:25:51",
+    "kp": [
+      300.0,
+      350.0,
+      1000.0,
+      150.0
+    ],
+    "kd": [
+      20.0,
+      50.0,
+      100.0,
+      50.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260710_162550.png"
+  },
+  {
+    "timestamp": "2026-07-10 16:26:12",
+    "kp": [
+      300.0,
+      350.0,
+      1000.0,
+      150.0
+    ],
+    "kd": [
+      20.0,
+      50.0,
+      100.0,
+      50.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260710_162612.png"
+  },
+  {
+    "timestamp": "2026-07-10 16:26:41",
+    "kp": [
+      300.0,
+      350.0,
+      2000.0,
+      150.0
+    ],
+    "kd": [
+      20.0,
+      50.0,
+      100.0,
+      50.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260710_162640.png"
+  },
+  {
+    "timestamp": "2026-07-10 16:27:04",
+    "kp": [
+      300.0,
+      350.0,
+      1500.0,
+      150.0
+    ],
+    "kd": [
+      20.0,
+      50.0,
+      100.0,
+      50.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260710_162703.png"
+  },
+  {
+    "timestamp": "2026-07-10 16:57:25",
+    "kp": [
+      300.0,
+      350.0,
+      350.0,
+      300.0
+    ],
+    "kd": [
+      20.0,
+      25.0,
+      25.0,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260710_165725.png"
+  },
+  {
+    "timestamp": "2026-07-10 16:57:43",
+    "kp": [
+      300.0,
+      350.0,
+      1000.0,
+      300.0
+    ],
+    "kd": [
+      20.0,
+      25.0,
+      25.0,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260710_165742.png"
+  },
+  {
+    "timestamp": "2026-07-10 16:59:23",
+    "kp": [
+      300.0,
+      350.0,
+      1000.0,
+      350.0
+    ],
+    "kd": [
+      20.0,
+      30.0,
+      50.0,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260710_165922.png"
+  },
+  {
+    "timestamp": "2026-07-10 16:59:48",
+    "kp": [
+      300.0,
+      350.0,
+      1000.0,
+      350.0
+    ],
+    "kd": [
+      20.0,
+      30.0,
+      50.0,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260710_165947.png"
+  },
+  {
+    "timestamp": "2026-07-10 17:00:24",
+    "kp": [
+      300.0,
+      400.0,
+      1000.0,
+      350.0
+    ],
+    "kd": [
+      20.0,
+      30.0,
+      50.0,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260710_170024.png"
+  },
+  {
+    "timestamp": "2026-07-10 17:03:07",
+    "kp": [
+      300.0,
+      400.0,
+      1000.0,
+      350.0
+    ],
+    "kd": [
+      20.0,
+      30.0,
+      50.0,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260710_170306.png"
+  },
+  {
+    "timestamp": "2026-07-10 17:03:38",
+    "kp": [
+      300.0,
+      400.0,
+      1000.0,
+      1000.0
+    ],
+    "kd": [
+      20.0,
+      30.0,
+      50.0,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260710_170338.png"
+  },
+  {
+    "timestamp": "2026-07-10 17:03:54",
+    "kp": [
+      300.0,
+      400.0,
+      1000.0,
+      300.0
+    ],
+    "kd": [
+      20.0,
+      30.0,
+      50.0,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260710_170354.png"
+  },
+  {
+    "timestamp": "2026-07-10 17:04:04",
+    "kp": [
+      300.0,
+      400.0,
+      1000.0,
+      300.0
+    ],
+    "kd": [
+      20.0,
+      30.0,
+      50.0,
+      100.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260710_170403.png"
+  },
+  {
+    "timestamp": "2026-07-10 17:04:22",
+    "kp": [
+      300.0,
+      400.0,
+      1000.0,
+      300.0
+    ],
+    "kd": [
+      20.0,
+      30.0,
+      50.0,
+      100.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260710_170422.png"
+  },
+  {
+    "timestamp": "2026-07-10 17:04:46",
+    "kp": [
+      300.0,
+      400.0,
+      1000.0,
+      1000.0
+    ],
+    "kd": [
+      20.0,
+      30.0,
+      50.0,
+      100.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260710_170445.png"
+  }
+]

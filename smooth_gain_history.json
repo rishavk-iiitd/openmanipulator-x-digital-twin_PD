@@ -1,0 +1,117 @@
+[
+  {
+    "timestamp": "2026-07-10 17:50:06",
+    "kp": [
+      300.0,
+      350.0,
+      350.0,
+      300.0
+    ],
+    "kd": [
+      20.0,
+      25.0,
+      25.0,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260710_175006.png",
+    "target_xyz": [
+      150.0,
+      0.0,
+      150.0
+    ],
+    "smoothing_time": 2.0
+  },
+  {
+    "timestamp": "2026-07-10 17:50:42",
+    "kp": [
+      300.0,
+      350.0,
+      350.0,
+      300.0
+    ],
+    "kd": [
+      20.0,
+      25.0,
+      25.0,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260710_175041.png",
+    "target_xyz": [
+      150.0,
+      50.0,
+      150.0
+    ],
+    "smoothing_time": 2.0
+  },
+  {
+    "timestamp": "2026-07-10 17:51:04",
+    "kp": [
+      300.0,
+      350.0,
+      1000.0,
+      300.0
+    ],
+    "kd": [
+      20.0,
+      25.0,
+      25.0,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260710_175104.png",
+    "target_xyz": [
+      150.0,
+      50.0,
+      150.0
+    ],
+    "smoothing_time": 0.0
+  },
+  {
+    "timestamp": "2026-07-10 17:51:16",
+    "kp": [
+      300.0,
+      350.0,
+      1000.0,
+      300.0
+    ],
+    "kd": [
+      20.0,
+      25.0,
+      25.0,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260710_175116.png",
+    "target_xyz": [
+      150.0,
+      50.0,
+      150.0
+    ],
+    "smoothing_time": 0.25
+  },
+  {
+    "timestamp": "2026-07-10 17:51:43",
+    "kp": [
+      300.0,
+      350.0,
+      1000.0,
+      300.0
+    ],
+    "kd": [
+      20.0,
+      25.0,
+      50.0,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260710_175142.png",
+    "target_xyz": [
+      150.0,
+      50.0,
+      150.0
+    ],
+    "smoothing_time": 0.25
+  }
+]
