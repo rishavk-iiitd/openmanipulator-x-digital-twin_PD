@@ -1,9 +1,18 @@
-"""3D viewer window: a fairly direct port of the Processing sketch's
+"""3D viewer: a fairly direct port of the Processing sketch's
 setWindow()/drawWorldFrame()/drawManipulator() to PyOpenGL + GLFW.
 
-Runs its own GLFW window/GL context on a background thread. All state it
-needs (joint angles, model transform, camera drag) is read from/written to
-the shared SharedState under its lock.
+Two ways to use it, both on a background thread, both driven entirely by
+the shared SharedState under its lock:
+
+  run()                  -- its own visible GLFW window, as before. Used by
+                            main.py and the labs that still open two windows.
+  run_offscreen(...)     -- renders into a HIDDEN GLFW context and hands each
+                            frame back as an RGBA float array, so a panel can
+                            show the 3D view inside its own UI instead of
+                            popping a second window. See ik_gravity_panel.
+
+GLFW contexts are thread-affine, so whichever entry point is used must
+create the context and draw on the same thread -- both of these do.
 """
 import math
 import time
@@ -47,7 +56,7 @@ from OpenGL.GL import (
     glVertex3f,
     glViewport,
 )
-from OpenGL.GL import GL_MODELVIEW, GL_PROJECTION
+from OpenGL.GL import GL_MODELVIEW, GL_PROJECTION, GL_FLOAT, GL_RGBA, glReadPixels
 from OpenGL.GLU import gluLookAt, gluNewQuadric, gluPerspective, gluSphere
 
 try:
@@ -121,6 +130,80 @@ class ManipulatorView:
             time.sleep(1 / 60)
 
         glfw.terminate()
+
+    # ---------------- embedded (offscreen) rendering ----------------
+    def run_offscreen(self, width, height, on_frame, should_stop, fps=30.0):
+        """Render into a hidden GLFW context and hand each finished frame to
+        on_frame(buf) as a flat float32 RGBA array in 0..1, row 0 at the TOP
+        (OpenGL reads bottom-up, so it is flipped here).
+
+        Runs until should_stop() returns True. 30 fps rather than 60 because
+        every frame costs a readback plus a copy, and the arm is not moving
+        fast enough for the difference to be visible."""
+        import numpy as np
+
+        if not glfw.init():
+            raise RuntimeError("Failed to initialize GLFW")
+
+        glfw.window_hint(glfw.VISIBLE, glfw.FALSE)   # context without a window
+        glfw.window_hint(glfw.RESIZABLE, glfw.FALSE)
+        self.window = glfw.create_window(width, height, "OpenManipulator (embedded)",
+                                         None, None)
+        if not self.window:
+            glfw.terminate()
+            raise RuntimeError("Failed to create offscreen GLFW context")
+
+        glfw.make_context_current(self.window)
+        self._load_shapes()
+        self._init_gl()
+        self._init_projection()
+        glViewport(0, 0, width, height)
+
+        raw = np.empty(height * width * 4, dtype=np.float32)
+        period = 1.0 / fps
+        try:
+            while not should_stop():
+                t0 = time.time()
+                self._draw_frame()
+                glReadPixels(0, 0, width, height, GL_RGBA, GL_FLOAT, raw)
+                on_frame(raw.reshape(height, width, 4)[::-1])
+                glfw.poll_events()
+                dt = time.time() - t0
+                if dt < period:
+                    time.sleep(period - dt)
+        finally:
+            try:
+                glfw.destroy_window(self.window)
+                glfw.terminate()
+            except Exception:
+                pass
+            self.window = None
+
+    # ---------------- camera control from an embedding UI ----------------
+    # The GLFW callbacks below only fire for the standalone window. When the
+    # view is embedded these are called directly by the host panel instead,
+    # so drag/zoom/nudge behave identically in both modes.
+    def orbit(self, dx, dy):
+        with self.state.lock:
+            self.state.world_rot[0] -= dx * 2.0
+            self.state.world_rot[1] -= dy * 2.0
+
+    def zoom(self, steps):
+        with self.state.lock:
+            self.state.model_scale_factor += steps * 0.01
+
+    def nudge(self, axis, amount):
+        with self.state.lock:
+            self.state.model_trans[axis] += amount
+
+    def reset_view(self):
+        with self.state.lock:
+            self.state.model_trans[0] = 0.0
+            self.state.model_trans[1] = 0.0
+            self.state.model_trans[2] = 0.0
+            self.state.model_scale_factor = 0.0
+            self.state.world_rot[0] = 0.0
+            self.state.world_rot[1] = 0.0
 
     def _load_shapes(self):
         for key, filename in LINK_FILES:

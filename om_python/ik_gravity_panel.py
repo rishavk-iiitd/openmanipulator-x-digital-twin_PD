@@ -63,14 +63,23 @@ import time
 from pathlib import Path
 
 import dearpygui.dearpygui as dpg
+import numpy as np
 
 from . import (
     gain_history, gain_schedule, inverse_kinematics, kinematics, plotting,
     rigid_body_dynamics,
 )
 from .pd_panel import HW_GC_KD, HW_GC_KP, _finite_diff
+from .renderer import ManipulatorView
 from .rigid_body_dynamics import RigidBodyDynamics
 from .torque_link import TorqueLink
+
+# One window: controls on the left third, the 3D arm on the right two thirds.
+# The 3D view is rendered offscreen at a fixed VIEW_TEX square and scaled to
+# fit its pane, so window size costs nothing in render time.
+VIEWPORT_W, VIEWPORT_H = 1500, 950
+CTRL_PANE_W = VIEWPORT_W // 3
+VIEW_TEX = 760
 
 HOME_POSE = (0.0, 0.0, 0.0, 0.0)
 DT = 0.01
@@ -87,16 +96,29 @@ SIM_DEFAULT_KP = [0.6, 0.6, 0.6, 0.6]
 SIM_DEFAULT_KD = [0.15, 0.15, 0.15, 0.15]
 
 # mA per N*m -- converts the SI-unit gravity torque G(q) into the current
-# space the hardware Kp/Kd already operate in (see pd_lab.py/torque_link.py).
-# Exact, not a guess: the inverse of the XM430-W350's torque constant Kt,
-# derived from ROBOTIS's own published stall spec (emanual.robotis.com/
-# docs/en/dxl/x/xm430-w350) at their recommended 12.0V supply --
-# Stall Torque 4.1 N*m at Stall Current 2.3 A, so 2300 mA / 4.1 N*m =
-# 560.98 mA/N*m. If your arm is actually powered at 11.1V (common 3S LiPo)
-# rather than 12.0V, the datasheet's 11.1V row gives 2100/3.8 = 552.63
-# instead -- close enough that it rarely matters, but this field is still
-# a live UI input if you want to dial it in per your actual supply.
-GRAVITY_SCALE_DEFAULT = 560.98
+# space the hardware Kp/Kd operate in.
+#
+# 560.98 is the datasheet figure: the inverse of the XM430-W350's torque
+# constant from ROBOTIS's published stall spec at 12.0 V (2300 mA / 4.1 N*m).
+# It is NOT what this arm needs. The first nine hardware runs made with
+# gravity compensation actually reaching the motors (plots/run_20260916_1635*
+# .. 1734*) show the motor holding the parked arm with consistently LESS
+# current than G(q)*560.98 predicts:
+#
+#     i_meas / feedforward at rest:  joint 2 median 0.80, joint 3 median 0.63
+#     (ratios range 0.42-0.94 by pose; worst in reaching poses)
+#
+# so at 560.98 the feedforward over-drives the arm: it pushes PAST the target
+# in the anti-gravity direction and the PD term is left fighting it -- run
+# 163731 parks 13 degrees beyond its shoulder target with ff = +313 mA and
+# Kp*e = -161 mA pulling back. That was read as "does not reach"; it is the
+# opposite. The default is therefore the empirical value. Why the model is
+# high is not settled from nine runs -- URDF link masses heavier than this
+# arm, a real Kt above the stall-derived figure, or friction sharing the
+# hold -- and the pose dependence suggests the COM model rather than a pure
+# scale error. This is still a live UI field for dialling it in per arm.
+GRAVITY_SCALE_DATASHEET = 560.98
+GRAVITY_SCALE_DEFAULT = 390.0
 GRAVITY_UPDATE_PERIOD = 0.05  # 20 Hz -- G(q) changes slowly, no need for 250 Hz
 
 HISTORY_FILE = Path(__file__).resolve().parent.parent / "ik_gain_history.json"
@@ -121,91 +143,201 @@ class IKGravityPanel:
         self._target_angles = list(HOME_POSE)
         self._target_xyz = (0.0, 0.0, 0.0)
         self._run_warning = None
+        self._view = ManipulatorView(state)
+        self._view_buf = None
+        self._view_stop = threading.Event()
+        self._view_thread = None
+        self._drag_prev = (0.0, 0.0)
         self._history = gain_history.load_history(HISTORY_FILE)
 
     def run(self):
         self.build_ui()
+        self.start_view()
         dpg.show_viewport()
         dpg.start_dearpygui()
 
+        self._view_stop.set()
+        if self._view_thread:
+            self._view_thread.join(timeout=2.0)
         self._gravity_running = False
         if self.torque_link:
             self.torque_link.close()
         dpg.destroy_context()
+
+    # ---------------- embedded 3D view ----------------
+    def start_view(self):
+        """Drive renderer.py offscreen on its own thread, copying each frame
+        into the texture the image widget is showing. The GL context is
+        created on that thread and never touched from anywhere else."""
+        self._view_stop.clear()
+        self._view_thread = threading.Thread(target=self._view_loop, daemon=True)
+        self._view_thread.start()
+
+    def _view_loop(self):
+        try:
+            self._view.run_offscreen(
+                VIEW_TEX, VIEW_TEX, self._on_view_frame, self._view_stop.is_set,
+            )
+        except Exception as exc:  # noqa: BLE001 -- a dead 3D view must not kill the panel
+            print(f"[3d view] stopped: {exc!r}")
+
+    def _on_view_frame(self, frame):
+        # frame is (H, W, 4) float32, already flipped to top-down by the
+        # renderer; the texture wants it flat. Copied in place -- allocating a
+        # fresh 9 MB buffer 30 times a second would cost more than the render.
+        # Guarded because the buffer goes away when DearPyGui tears the
+        # context down on close.
+        try:
+            self._view_buf[:] = frame.reshape(-1)
+        except Exception:
+            pass
+
+    def _on_viewport_resize(self, sender=None, app_data=None):
+        """Keep the split at one third / two thirds, and letterbox the square
+        3D texture into whatever space that leaves."""
+        try:
+            vw, vh = dpg.get_viewport_client_width(), dpg.get_viewport_client_height()
+            pane_w = max(260, vw // 3)
+            dpg.configure_item("ctrl_pane", width=pane_w)
+            side = max(120, min(vw - pane_w - 40, vh - 60))
+            dpg.configure_item("view_image", width=side, height=side)
+        except Exception:
+            pass
+
+    # ---------------- camera input, forwarded to the renderer ----------------
+    def _on_view_drag(self, sender, app_data):
+        if not dpg.is_item_hovered("view_image") and self._drag_prev == (0.0, 0.0):
+            return
+        _button, dx, dy = app_data
+        # DearPyGui reports the TOTAL delta since the drag began, where the
+        # GLFW path got per-move deltas -- difference them so the orbit rate
+        # matches the standalone window exactly.
+        self._view.orbit(dx - self._drag_prev[0], dy - self._drag_prev[1])
+        self._drag_prev = (dx, dy)
+
+    def _on_view_drag_end(self, sender, app_data):
+        self._drag_prev = (0.0, 0.0)
+
+    def _on_view_wheel(self, sender, app_data):
+        if dpg.is_item_hovered("view_image"):
+            self._view.zoom(app_data)
+
+    def _on_view_key(self, sender, app_data):
+        if dpg.is_item_focused("target_x") or dpg.is_item_focused("target_y")            or dpg.is_item_focused("target_z"):
+            return                      # typing a coordinate, not driving the camera
+        step = {dpg.mvKey_Q: (0, -50), dpg.mvKey_A: (0, 50),
+                dpg.mvKey_W: (1, 50), dpg.mvKey_S: (1, -50),
+                dpg.mvKey_E: (2, -50), dpg.mvKey_D: (2, 50)}.get(app_data)
+        if step:
+            self._view.nudge(*step)
+        elif app_data == dpg.mvKey_I:
+            self._view.reset_view()
 
     def build_ui(self):
         """Everything except the blocking render loop, so a smoke test can
         construct the whole panel and catch a missing widget tag without
         opening a window."""
         dpg.create_context()
-        dpg.create_viewport(title="Gravity-Compensated PD (XYZ target)", width=520, height=1040)
+        dpg.create_viewport(title="OpenManipulator-X -- Gravity-Compensated PD",
+                            width=VIEWPORT_W, height=VIEWPORT_H)
         dpg.setup_dearpygui()
 
+        # The 3D view is drawn offscreen by renderer.py and blitted into this
+        # texture, so it lives inside this window instead of opening a second
+        # one. Fixed size regardless of how the window is resized -- the image
+        # widget scales it -- which keeps the per-frame readback cost constant.
+        self._view_buf = np.zeros(VIEW_TEX * VIEW_TEX * 4, dtype=np.float32)
+        with dpg.texture_registry():
+            dpg.add_raw_texture(VIEW_TEX, VIEW_TEX, self._view_buf,
+                                format=dpg.mvFormat_Float_rgba, tag="view_tex")
+
         with dpg.window(tag="ik_main", no_close=True, no_collapse=True):
-            dpg.add_text("Gravity/Coriolis/Inertia-compensated PD control", color=(255, 204, 102))
-            dpg.add_text(
-                "Stage 1: solve IK for a target XYZ. Stage 2: computed-torque\n"
-                "PD (M(q), C(q,qdot), G(q)) drives the arm there.",
-                color=(160, 160, 160), wrap=480,
-            )
+          with dpg.group(horizontal=True):
+            with dpg.child_window(tag="ctrl_pane", width=CTRL_PANE_W, autosize_y=True):
+                dpg.add_text("Gravity/Coriolis/Inertia-compensated PD control", color=(255, 204, 102))
+                dpg.add_text(
+                    "Stage 1: solve IK for a target XYZ. Stage 2: computed-torque\n"
+                    "PD (M(q), C(q,qdot), G(q)) drives the arm there.",
+                    color=(160, 160, 160), wrap=430,
+                )
 
-            dpg.add_radio_button(
-                ("Simulate", "Real Hardware"), tag="mode_radio", default_value="Simulate",
-                horizontal=True, callback=self._on_mode_change,
-            )
+                dpg.add_radio_button(
+                    ("Simulate", "Real Hardware"), tag="mode_radio", default_value="Simulate",
+                    horizontal=True, callback=self._on_mode_change,
+                )
 
-            with dpg.group(tag="hw_group", show=False):
+                with dpg.group(tag="hw_group", show=False):
+                    with dpg.group(horizontal=True):
+                        dpg.add_input_text(label="COM port", tag="hw_port", default_value="COM3", width=100)
+                        dpg.add_button(label="Connect", callback=self._on_connect)
+                        dpg.add_button(label="EMERGENCY TORQUE OFF", callback=self._on_emergency_stop, width=200)
+                    dpg.add_text("Not connected.", tag="hw_status", color=(255, 140, 140), wrap=430)
+                    with dpg.group(horizontal=True):
+                        dpg.add_input_float(
+                            label="Gravity scale (mA/N*m)", tag="gravity_scale",
+                            default_value=GRAVITY_SCALE_DEFAULT, step=25.0, width=130,
+                        )
+                        dpg.add_input_float(
+                            label="Move time (s)", tag="move_duration",
+                            default_value=MOVE_DURATION_DEFAULT, step=0.25, width=110,
+                        )
+                dpg.add_separator()
+
+                dpg.add_text("Target end-effector position (mm):")
                 with dpg.group(horizontal=True):
-                    dpg.add_input_text(label="COM port", tag="hw_port", default_value="COM3", width=100)
-                    dpg.add_button(label="Connect", callback=self._on_connect)
-                    dpg.add_button(label="EMERGENCY TORQUE OFF", callback=self._on_emergency_stop, width=200)
-                dpg.add_text("Not connected.", tag="hw_status", color=(255, 140, 140), wrap=480)
+                    dpg.add_input_float(label="X", tag="target_x", default_value=150.0, width=100)
+                    dpg.add_input_float(label="Y", tag="target_y", default_value=0.0, width=100)
+                    dpg.add_input_float(label="Z", tag="target_z", default_value=150.0, width=100)
+                dpg.add_button(label="Solve IK (preview target pose)", width=-1, callback=self._on_solve_ik)
+                dpg.add_text("", tag="ik_status", color=(140, 220, 140), wrap=430)
+
+                dpg.add_separator()
+                dpg.add_text("Per-joint gains (mA/rad, mA/(rad/s)):")
+                with dpg.table(header_row=True):
+                    dpg.add_table_column(label="Joint")
+                    dpg.add_table_column(label="Kp")
+                    dpg.add_table_column(label="Kd")
+                    for j in range(4):
+                        with dpg.table_row():
+                            dpg.add_text(f"Joint {j + 1}")
+                            dpg.add_input_float(tag=f"kp_{j}", default_value=SIM_DEFAULT_KP[j], step=0.05, width=-1)
+                            dpg.add_input_float(tag=f"kd_{j}", default_value=SIM_DEFAULT_KD[j], step=0.02, width=-1)
+                dpg.add_text("", tag="gain_units", color=(160, 160, 160), wrap=430)
+
                 with dpg.group(horizontal=True):
-                    dpg.add_input_float(
-                        label="Gravity scale (mA/N*m)", tag="gravity_scale",
-                        default_value=GRAVITY_SCALE_DEFAULT, step=25.0, width=130,
-                    )
-                    dpg.add_input_float(
-                        label="Move time (s)", tag="move_duration",
-                        default_value=MOVE_DURATION_DEFAULT, step=0.25, width=110,
-                    )
-            dpg.add_separator()
+                    dpg.add_button(label="Run to Target", width=250, height=40, callback=self._on_run)
+                    dpg.add_button(label="Reset / Torque Off", width=230, height=40, callback=self._on_reset)
 
-            dpg.add_text("Target end-effector position (mm):")
-            with dpg.group(horizontal=True):
-                dpg.add_input_float(label="X", tag="target_x", default_value=150.0, width=100)
-                dpg.add_input_float(label="Y", tag="target_y", default_value=0.0, width=100)
-                dpg.add_input_float(label="Z", tag="target_z", default_value=150.0, width=100)
-            dpg.add_button(label="Solve IK (preview target pose)", width=-1, callback=self._on_solve_ik)
-            dpg.add_text("", tag="ik_status", color=(140, 220, 140), wrap=480)
+                dpg.add_text("", tag="run_status", color=(140, 220, 140), wrap=430)
+                dpg.add_text("", tag="ctl_status", color=(150, 190, 255), wrap=430)
+                dpg.add_separator()
 
-            dpg.add_separator()
-            dpg.add_text("Per-joint gains (mA/rad, mA/(rad/s)):")
-            with dpg.table(header_row=True):
-                dpg.add_table_column(label="Joint")
-                dpg.add_table_column(label="Kp")
-                dpg.add_table_column(label="Kd")
-                for j in range(4):
-                    with dpg.table_row():
-                        dpg.add_text(f"Joint {j + 1}")
-                        dpg.add_input_float(tag=f"kp_{j}", default_value=SIM_DEFAULT_KP[j], step=0.05, width=-1)
-                        dpg.add_input_float(tag=f"kd_{j}", default_value=SIM_DEFAULT_KD[j], step=0.02, width=-1)
-            dpg.add_text("", tag="gain_units", color=(160, 160, 160), wrap=480)
+                dpg.add_text("History (double-click to reload gains + target):")
+                dpg.add_listbox([], tag="history_list", num_items=10, width=-1, callback=self._on_history_select)
 
-            with dpg.group(horizontal=True):
-                dpg.add_button(label="Run to Target", width=250, height=40, callback=self._on_run)
-                dpg.add_button(label="Reset / Torque Off", width=230, height=40, callback=self._on_reset)
+            with dpg.child_window(tag="view_pane", autosize_x=True, autosize_y=True,
+                                  no_scrollbar=True):
+                dpg.add_image("view_tex", tag="view_image",
+                              width=VIEW_TEX, height=VIEW_TEX)
+                dpg.add_text("drag to orbit | wheel to zoom | Q/A W/S E/D nudge | I reset",
+                             tag="view_hint", color=(120, 120, 120))
 
-            dpg.add_text("", tag="run_status", color=(140, 220, 140), wrap=480)
-            dpg.add_text("", tag="ctl_status", color=(150, 190, 255), wrap=480)
-            dpg.add_separator()
+        # Camera input. The standalone window gets this from GLFW callbacks;
+        # embedded, DearPyGui owns the mouse, so forward it to the same
+        # methods so both modes behave identically.
+        with dpg.handler_registry():
+            dpg.add_mouse_drag_handler(button=dpg.mvMouseButton_Left,
+                                       callback=self._on_view_drag)
+            dpg.add_mouse_release_handler(button=dpg.mvMouseButton_Left,
+                                          callback=self._on_view_drag_end)
+            dpg.add_mouse_wheel_handler(callback=self._on_view_wheel)
+            dpg.add_key_press_handler(callback=self._on_view_key)
 
-            dpg.add_text("History (double-click to reload gains + target):")
-            dpg.add_listbox([], tag="history_list", num_items=10, width=-1, callback=self._on_history_select)
-
+        dpg.set_viewport_resize_callback(self._on_viewport_resize)
         self._update_gain_units_label()
         self._refresh_history_widget()
         dpg.set_primary_window("ik_main", True)
+        self._on_viewport_resize()
 
     # ---------------- mode / gains ----------------
     def _on_mode_change(self, sender, value):
