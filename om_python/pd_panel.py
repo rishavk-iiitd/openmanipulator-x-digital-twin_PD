@@ -60,8 +60,9 @@ HW_DEFAULT_KD = [20.0, 25.0, 24.0, 20.0]
 
 # ---------------------------------------------------------------------------
 # Fixed per-joint gains for the gravity-compensated PD lab (ik_gravity_panel).
-# CALCULATED, not hand-tuned -- gain_schedule.py does the arithmetic, and
-# `python -m om_python.gain_schedule` reprints it if you want other numbers.
+# These are the values chosen on the real arm. Run
+# `python -m om_python.gain_schedule` to see what any pair implies, or to
+# recompute from a target response rather than guessing new numbers by hand.
 #
 # For a joint driven by torque, the pair that places its closed loop at a
 # chosen natural frequency and damping ratio is
@@ -80,23 +81,34 @@ HW_DEFAULT_KD = [20.0, 25.0, 24.0, 20.0]
 #
 #     J = mean over the workspace of diag(M(q)) + 0.011
 #       = [0.0175, 0.0224, 0.0164, 0.0114] kg*m^2
-#     omega = 12 rad/s (1.9 Hz), zeta = 0.9
 #
-# A single fixed pair is enough: with these numbers the achieved damping
-# ratio only moves between 0.66 (arm reaching out) and 0.98 (folded) across
-# the whole workspace, and nothing is underdamped enough to ring. An earlier
-# revision streamed pose-scheduled gains 20x a second to hold zeta exactly
-# constant; measuring the spread showed it was not buying anything worth the
-# extra moving parts.
+# The pair below works out to omega ~ 7-8 rad/s (about 1.2 Hz) at zeta ~ 0.5
+# to 0.7, i.e. a moderately damped response with a little overshoot. That is
+# a deliberately softer setting than the omega = 12, zeta = 0.9 the formula
+# above suggests: on this arm, gentler gains matter more than the last degree
+# of steady-state accuracy, because a geared joint that is pushed hard near
+# its target stick-slips rather than settling.
+#
+# A single fixed pair is enough. The achieved damping ratio only drifts
+# between 0.47 (arm reaching out, where inertia is highest) and 0.69 (wrist)
+# across the whole workspace -- nothing underdamped enough to ring. An
+# earlier revision streamed pose-scheduled gains 20x a second to hold zeta
+# exactly constant; measuring that spread showed it was not worth the extra
+# moving parts.
 #
 # What these DON'T fix is steady-state error. The gearbox absorbs 40-200 mA
 # of stiction before the output shaft moves (measured the same way, by
 # differencing G(q) against the holding current), so the arm parks within
-# roughly stiction/Kp of the target -- a couple of degrees. That is the
-# honest, inherent cost of PD with no integral term. Raising Kp shrinks it;
-# so would an integral term, which is deliberately not here.
-HW_GC_KP = [1100.0, 1600.0, 1300.0, 900.0]
-HW_GC_KD = [165.0, 235.0, 195.0, 135.0]
+# roughly stiction/Kp of the target. Lower Kp means a wider park band --
+# that is the trade being made here. Raising Kp shrinks it; so would an
+# integral term, which is deliberately not present.
+#
+# Note on Kd and loop rate: Kd*T/J = 2 is the discrete stability limit, so
+# these are safe down to about 25 Hz. ik_gravity_panel checks the rate the
+# firmware reports achieving and scales Kd down if the loop is slower than
+# the gains assume.
+HW_GC_KP = [500.0, 700.0, 600.0, 400.0]
+HW_GC_KD = [80.0, 100.0, 90.0, 70.0]
 
 
 def _fmt_list(values):
