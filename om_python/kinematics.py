@@ -1,17 +1,54 @@
-"""Forward-kinematics helper used only for the gripper trail effect.
+"""Forward-kinematics helper, originally written only for the gripper
+trail effect, now also the shared FK backbone for inverse_kinematics.py
+and rigid_body_dynamics.py.
 
-The offsets below are the exact numbers used in the Processing sketch's
-drawManipulator() translate() calls (already in millimetres, i.e. pre-
-multiplied by 1000 the way the original .pde does).
+LINK2_OFFSET/LINK3_OFFSET/LINK4_OFFSET/LINK5_OFFSET are each joint's exact
+origin, straight from ROBOTIS's OpenMANIPULATOR-X URDF (ROBOTIS-GIT/
+open_manipulator, open_manipulator_description/urdf/open_manipulator_x/
+open_manipulator_x.urdf), meters converted to mm:
+    world_fixed (world->link1): xyz="0 0 0"        -> link1 IS world frame
+    joint1 (link1->link2):      xyz="0.012 0 0"     -> LINK2_OFFSET
+    joint2 (link2->link3):      xyz="0 0 0.0595"    -> LINK3_OFFSET
+    joint3 (link3->link4):      xyz="0.024 0 0.128" -> LINK4_OFFSET
+    joint4 (link4->link5):      xyz="0.124 0 0"     -> LINK5_OFFSET
+LINK2_OFFSET and LINK3_OFFSET used to be (0,0,36) and (0,0,40) -- numbers
+carried over from a Processing sketch's drawManipulator() translate()
+calls, not the real CAD dimensions (a ~20mm-scale error: e.g. joint1's
+pivot was modeled as straight up from the origin, when it's actually
+offset mostly in X). LINK4_OFFSET/LINK5_OFFSET already matched the URDF
+exactly and are unchanged.
+
+WRIST_OFFSET/SPHERE_OFFSET remain an approximation: they place a "gripper
+centre sphere" for the trail-effect visualization (deliberately offset to
+sit *between* the two gripper fingers), and no single URDF frame
+corresponds to that exact point -- the URDF only defines the two finger
+frames (which move with the gripper's own prismatic joint, not modeled
+here) and a centerline end_effector_link (fixed joint, xyz="0.126 0 0"
+from link5 -- close to WRIST_OFFSET's 130mm-X but not the same point).
 """
 import numpy as np
 
-LINK2_OFFSET = (0.0, 0.0, 36.0)
-LINK3_OFFSET = (0.0, 0.0, 40.0)
+LINK2_OFFSET = (12.0, 0.0, 0.0)
+LINK3_OFFSET = (0.0, 0.0, 59.5)
 LINK4_OFFSET = (24.0, 0.0, 128.0)
 LINK5_OFFSET = (124.0, 0.0, 0.0)
 WRIST_OFFSET = (130.0, 14.0, 0.0)
 SPHERE_OFFSET = (0.0, -7.0, 0.0)
+
+# Exact center-of-mass offset (mm) of each moving link, in that link's own
+# frame -- applied at the same point in the chain WRIST_OFFSET is applied
+# for the gripper, i.e. right after that link's own joint has rotated.
+# Straight from ROBOTIS's OpenMANIPULATOR-X URDF <inertial><origin> per
+# link (ROBOTIS-GIT/open_manipulator, open_manipulator_description/urdf/
+# open_manipulator_x/open_manipulator_x.urdf), meters converted to mm --
+# not a guess, and not the old "midpoint between chain joints"
+# approximation link_com_positions() used to use. link1 (the static base
+# bracket) has no entry -- it never moves, and rigid_body_dynamics.py's
+# point-mass model excludes it (see that file's LINK_MASS comment).
+LINK2_COM_OFFSET = (-0.30184870, 0.54043684, 47.433464)   # link2, after joint1 rotates
+LINK3_COM_OFFSET = (10.308393, 0.37743363, 101.70197)     # link3, after joint2 rotates
+LINK4_COM_OFFSET = (90.909590, 0.38929816, 0.22413279)    # link4, after joint3 rotates
+LINK5_COM_OFFSET = (44.206755, 0.00036839985, 8.9142216)  # link5, after joint4 rotates
 
 # Real joint limits (radians), matching open_manipulator_libs's addJoint()
 # calls and firmware/open_manipulator_torque_pd.ino's JOINT_MIN/MAX.
@@ -93,20 +130,29 @@ def clamp_to_joint_limits(joint_angle):
 
 
 def link_com_positions(joint_angle):
-    """Approximate center-of-mass position (mm) of each of the 4 moving
-    links, taken as the midpoint between the joint origin it starts at and
-    the next point in the chain (the following joint's origin, or the
-    gripper center for the last link). Real mesh-based centroids aren't
-    used -- this is a documented approximation for the dynamics model in
-    rigid_body_dynamics.py, same spirit as dynamics.py's placeholder
-    inertia/damping."""
-    joints = joint_positions(joint_angle)
-    tip = gripper_center(joint_angle, (0.0, 0.0, 0.0), 0.0)
-    chain = joints + [tip]  # 5 points: joint1..joint4, then the gripper tip
-
+    """Exact center-of-mass position (mm) of each of the 4 moving links,
+    from ROBOTIS's real mesh-based URDF centroids (LINK2_COM_OFFSET etc.
+    above) -- not the midpoint-between-chain-joints approximation this
+    used to be. Each offset is applied in that link's own frame, i.e.
+    right after that link's own joint has rotated -- the same point in
+    the chain gripper_center() applies WRIST_OFFSET at."""
+    t = np.eye(4)
     coms = []
-    for i in range(4):
-        a = np.array(chain[i])
-        b = np.array(chain[i + 1])
-        coms.append(tuple((a + b) / 2.0))
+
+    t = t @ _trans(LINK2_OFFSET)
+    t = t @ _rot_z(-joint_angle[0])
+    coms.append(tuple((t @ _trans(LINK2_COM_OFFSET) @ _ORIGIN)[:3]))  # link2 COM
+
+    t = t @ _trans(LINK3_OFFSET)
+    t = t @ _rot_y(joint_angle[1])
+    coms.append(tuple((t @ _trans(LINK3_COM_OFFSET) @ _ORIGIN)[:3]))  # link3 COM
+
+    t = t @ _trans(LINK4_OFFSET)
+    t = t @ _rot_y(joint_angle[2])
+    coms.append(tuple((t @ _trans(LINK4_COM_OFFSET) @ _ORIGIN)[:3]))  # link4 COM
+
+    t = t @ _trans(LINK5_OFFSET)
+    t = t @ _rot_y(joint_angle[3])
+    coms.append(tuple((t @ _trans(LINK5_COM_OFFSET) @ _ORIGIN)[:3]))  # link5 COM
+
     return coms

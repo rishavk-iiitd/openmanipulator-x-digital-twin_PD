@@ -40,7 +40,7 @@ SIM_DEFAULT_KD = [0.15, 0.15, 0.15, 0.15]
 
 DEFAULT_SMOOTHING_TIME = 2.0  # seconds -- see trajectory.py
 
-GRAVITY_SCALE_DEFAULT = 500.0  # mA per N*m, see ik_gravity_panel.py
+GRAVITY_SCALE_DEFAULT = 560.98  # mA per N*m -- exact, see ik_gravity_panel.py
 GRAVITY_UPDATE_PERIOD = 0.05    # 20 Hz
 TARGET_UPDATE_PERIOD = 0.02     # 50 Hz -- how often the moving reference is
                                  # pushed to the firmware as its "target"
@@ -67,6 +67,8 @@ class SmoothTrajectoryPanel:
         self._ik_solved = False
         self._target_angles = list(HOME_POSE)
         self._target_xyz = (0.0, 0.0, 0.0)
+        self._last_q_ref = list(HOME_POSE)  # most recent trajectory setpoint, for
+                                             # correlating with async hw telemetry
         self._history = gain_history.load_history(HISTORY_FILE)
 
     def run(self):
@@ -275,7 +277,12 @@ class SmoothTrajectoryPanel:
         with self.state.lock:
             self.state.receive_joint_angle[:] = angles
         if self._recording:
-            self._hw_buffer.append((t, list(angles), list(velocities), list(currents)))
+            # self._last_q_ref: the reference _trajectory_updater_loop most
+            # recently computed and sent -- not exactly synchronous with
+            # this telemetry sample (they're separate threads/rates), but
+            # it's the actual setpoint in effect at roughly this instant,
+            # not an approximation of it.
+            self._hw_buffer.append((t, list(angles), list(velocities), list(currents), list(self._last_q_ref)))
 
     def _on_emergency_stop(self):
         self._recording = False
@@ -345,6 +352,7 @@ class SmoothTrajectoryPanel:
         run = {
             "t": [], "angle": [], "position": [], "velocity": [],
             "angular_velocity": [], "torque": [], "jerk": [], "end_effector": [],
+            "target_angle": [],
         }
         prev_positions = kinematics.joint_positions(HOME_POSE)
         prev_ddot = [0.0, 0.0, 0.0, 0.0]
@@ -373,6 +381,7 @@ class SmoothTrajectoryPanel:
             run["torque"].append(list(tau))
             run["jerk"].append(jerk)
             run["end_effector"].append(kinematics.gripper_center(theta, (0, 0, 0), 0.0))
+            run["target_angle"].append(list(q_ref))
 
             with self.state.lock:
                 self.state.receive_joint_angle[:] = theta
@@ -399,6 +408,7 @@ class SmoothTrajectoryPanel:
             dt = now - last_time
             last_time = now
             q_ref, _qdot_ref, _qddot_ref = self.trajectory.step(dt, self._target_angles, smoothing_time)
+            self._last_q_ref = list(q_ref)
             if self.torque_link:
                 self.torque_link.send_target(q_ref)
             with self.state.lock:
@@ -413,6 +423,7 @@ class SmoothTrajectoryPanel:
         if self.torque_link.last_state:
             start = self.torque_link.last_state[1]
         self.trajectory.reset(start)
+        self._last_q_ref = list(start)
 
         self.torque_link.send_gains(kp, kd)
 
@@ -434,20 +445,24 @@ class SmoothTrajectoryPanel:
         self._finish_run(run, kp, kd, smoothing_time, source="hardware")
 
     def _process_hw_buffer(self, buffer):
-        run = {"t": [], "angle": [], "position": [], "angular_velocity": [], "torque": [], "end_effector": []}
+        run = {
+            "t": [], "angle": [], "position": [], "angular_velocity": [], "torque": [],
+            "end_effector": [], "target_angle": [],
+        }
         if not buffer:
             run["velocity"] = []
             run["jerk"] = []
             return run
 
         t0 = buffer[0][0]
-        for t, angles, velocities, currents in buffer:
+        for t, angles, velocities, currents, q_ref in buffer:
             run["t"].append(t - t0)
             run["angle"].append(angles)
             run["angular_velocity"].append(velocities)
             run["torque"].append(currents)
             run["position"].append([math.dist((0, 0, 0), p) for p in kinematics.joint_positions(angles)])
             run["end_effector"].append(kinematics.gripper_center(angles, (0, 0, 0), 0.0))
+            run["target_angle"].append(q_ref)
 
         run["velocity"] = _finite_diff(run["t"], run["position"])
         angular_accel = _finite_diff(run["t"], run["angular_velocity"])
@@ -460,6 +475,7 @@ class SmoothTrajectoryPanel:
         png_path, csv_path = plotting.save_run(
             run, kp, kd, source=source,
             title=f"Smooth PD run to XYZ={xyz_rounded}, smoothing={smoothing_time:g}s",
+            target=run.get("target_angle") or None,
         )
         self._history = gain_history.append_history(
             kp, kd, png_path, mode=source, path=HISTORY_FILE,

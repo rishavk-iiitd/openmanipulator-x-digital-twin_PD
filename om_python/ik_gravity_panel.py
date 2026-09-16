@@ -39,10 +39,16 @@ SIM_DEFAULT_KP = [0.6, 0.6, 0.6, 0.6]
 SIM_DEFAULT_KD = [0.15, 0.15, 0.15, 0.15]
 
 # mA per N*m -- converts the SI-unit gravity torque G(q) into the current
-# space the hardware Kp/Kd already operate in (see pd_lab.py/torque_link.py
-# -- there's no verified torque constant for these servos, so this is a
-# tunable approximation, not a datasheet value).
-GRAVITY_SCALE_DEFAULT = 500.0
+# space the hardware Kp/Kd already operate in (see pd_lab.py/torque_link.py).
+# Exact, not a guess: the inverse of the XM430-W350's torque constant Kt,
+# derived from ROBOTIS's own published stall spec (emanual.robotis.com/
+# docs/en/dxl/x/xm430-w350) at their recommended 12.0V supply --
+# Stall Torque 4.1 N*m at Stall Current 2.3 A, so 2300 mA / 4.1 N*m =
+# 560.98 mA/N*m. If your arm is actually powered at 11.1V (common 3S LiPo)
+# rather than 12.0V, the datasheet's 11.1V row gives 2100/3.8 = 552.63
+# instead -- close enough that it rarely matters, but this field is still
+# a live UI input if you want to dial it in per your actual supply.
+GRAVITY_SCALE_DEFAULT = 560.98
 GRAVITY_UPDATE_PERIOD = 0.05  # 20 Hz -- G(q) changes slowly, no need for 100 Hz
 
 HISTORY_FILE = Path(__file__).resolve().parent.parent / "ik_gain_history.json"
@@ -410,10 +416,11 @@ class IKGravityPanel:
     # ---------------- shared completion path ----------------
     def _finish_run(self, run, kp, kd, source):
         xyz_rounded = tuple(round(v, 1) for v in self._target_xyz)
+        title = f"PD run to XYZ={xyz_rounded} (gravity-compensated)"
         png_path, csv_path = plotting.save_run(
-            run, kp, kd, source=source,
-            title=f"PD run to XYZ={xyz_rounded} (gravity-compensated)",
+            run, kp, kd, source=source, title=title, target=self._target_angles,
         )
+
         self._history = gain_history.append_history(
             kp, kd, png_path, mode=source, path=HISTORY_FILE,
             target_xyz=list(self._target_xyz),

@@ -1,25 +1,29 @@
-"""Control panel for feedback-linearization path following: instead of a
-single fixed XYZ target (ik_gravity_panel.py, smooth_trajectory_panel.py),
-the goal itself continuously moves along a parametric path (paths.py --
-circle or square, in a chosen plane).
+"""Control panel for feedback-linearization CIRCULAR end-effector trajectory
+tracking -- a trimmed-down path_follow_panel.py with the shape/square
+machinery removed: the goal always traces om_python/paths.py's circle_path(),
+never a fixed point.
 
-This is the SAME feedback-linearization (computed-torque) controller as the
-other two labs -- rigid_body_dynamics.py's M(q)/C(q,qdot)/G(q) cancellation
--- fed a continuously moving reference instead of a static one. Per control
-tick:
-  1. Sample the path at the current time -> an instantaneous Cartesian point.
+Same computed-torque (feedback-linearization) controller as the other labs
+-- rigid_body_dynamics.py's M(q)/C(q,qdot)/G(q) cancellation -- fed a
+continuously moving reference instead of a static one. Per control tick:
+  1. Sample the circle at the current time -> an instantaneous Cartesian
+     point (paths.circle_path(t, center, radius, plane, period)).
   2. Solve IK for that point (warm-started from the previous tick's
      solution, so it converges in a handful of iterations and doesn't jump).
   3. Run that joint-space point through trajectory.py's critically-damped
      reference filter (same as smooth_trajectory_panel.py) -- this is what
-     rounds the square path's corners, since the filter physically cannot
-     track an instantaneous change in velocity direction.
+     keeps the reference physically trackable instead of jumping every tick.
   4. Hand the filtered (q_ref, qdot_ref, qddot_ref) to the same
-     RigidBodyDynamics.step() used everywhere else.
+     RigidBodyDynamics.step() used everywhere else -- computed torque:
+         tau = M(q)*qddot_ref + Kp*e + Kd*edot + C(q,qdot)*qdot + G(q)
+     which cancels the arm's own nonlinear/gravity dynamics exactly, so
+     Kp/Kd only have to correct the (now-linear, decoupled) tracking error.
 
 See ik_gravity_panel.py / smooth_trajectory_panel.py for the point-target
-versions and pd_lab.py / torque_link.py / the torque-PD firmware for the
-hardware protocol, all reused here unchanged.
+versions, path_follow_panel.py for the general (circle-or-square,
+shape-selectable) version this was trimmed from, and pd_lab.py /
+torque_link.py / the torque-PD firmware for the hardware protocol, all
+reused here unchanged.
 """
 import math
 import os
@@ -41,21 +45,17 @@ DT = 0.01
 SIM_DEFAULT_KP = [0.6, 0.6, 0.6, 0.6]
 SIM_DEFAULT_KD = [0.15, 0.15, 0.15, 0.15]
 
-DEFAULT_SMOOTHING_TIME = 0.4  # seconds -- much shorter than the point-to-
-                               # point lab's 2.0s default. Here the filter
-                               # isn't a one-time settle to a fixed goal, it's
-                               # continuously chasing a moving one -- at
-                               # smoothing_time=2.0 it would lag a 6s-period
-                               # circle badly (steady-state tracking RMS on a
-                               # 60mm-radius circle measured at ~28mm for
-                               # smoothing_time=1.0, dropping to ~11mm at 0.4,
-                               # ~2mm at 0.1 -- see PROJECT_REPORT.md). Smaller
-                               # tracks tighter but raises jerk and can
-                               # saturate MAX_ANGULAR_ACCEL; 0.4s is a
-                               # reasonable middle ground out of the box.
-DEFAULT_SIZE_MM = 60.0  # mm -- radius (circle) / side (square); verified fully
-                         # reachable at the default center across multiple
-                         # loops (see PROJECT_REPORT.md's path-following section)
+DEFAULT_SMOOTHING_TIME = 0.4  # seconds -- see path_follow_panel.py's comment:
+                               # measured steady-state tracking RMS on a
+                               # 60mm-radius circle was ~28mm at
+                               # smoothing_time=1.0, ~11mm at 0.4, ~2mm at
+                               # 0.1 (PROJECT_REPORT.md). Smaller tracks
+                               # tighter but raises jerk and can saturate
+                               # MAX_ANGULAR_ACCEL; 0.4s is a reasonable
+                               # middle ground out of the box.
+DEFAULT_RADIUS_MM = 60.0  # mm -- verified fully reachable at the default
+                           # center across multiple loops (PROJECT_REPORT.md)
+DEFAULT_PERIOD = paths.DEFAULT_PERIOD["circle"]  # 6.0s / loop
 DEFAULT_LOOPS = 2
 
 GRAVITY_SCALE_DEFAULT = 560.98  # mA per N*m -- exact, see ik_gravity_panel.py
@@ -63,14 +63,14 @@ GRAVITY_UPDATE_PERIOD = 0.05    # 20 Hz
 TARGET_UPDATE_PERIOD = 0.02     # 50 Hz -- how often the moving reference is
                                  # pushed to the firmware as its "target"
 
-HISTORY_FILE = Path(__file__).resolve().parent.parent / "path_gain_history.json"
+HISTORY_FILE = Path(__file__).resolve().parent.parent / "circular_gain_history.json"
 
 
 def _fmt_list(values):
     return "[" + ", ".join(f"{v:g}" for v in values) + "]"
 
 
-class PathFollowPanel:
+class CircularTrackingPanel:
     def __init__(self, state):
         self.state = state
         self.dynamics = RigidBodyDynamics()
@@ -90,20 +90,19 @@ class PathFollowPanel:
 
     def run(self):
         dpg.create_context()
-        dpg.create_viewport(title="Path-Follow (feedback linearization)", width=480, height=1080)
+        dpg.create_viewport(title="Circular Trajectory Tracking (feedback linearization)", width=480, height=1020)
         dpg.setup_dearpygui()
 
-        with dpg.window(tag="path_main", no_close=True, no_collapse=True):
-            dpg.add_text("Feedback-linearization path following", color=(255, 204, 102))
+        with dpg.window(tag="circular_main", no_close=True, no_collapse=True):
+            dpg.add_text("Circular end-effector trajectory tracking", color=(255, 204, 102))
             dpg.add_text(
-                "Same computed-torque controller as the gravity-compensated\n"
-                "and smooth-trajectory labs (M(q), C(q,qdot), G(q) cancellation),\n"
-                "but the goal itself continuously moves along a circle/square\n"
-                "instead of sitting at one fixed point. IK is re-solved every\n"
-                "tick (warm-started from the previous solution); the moving\n"
-                "reference then passes through the same critically-damped\n"
-                "filter as smooth_trajectory_lab.py before reaching the\n"
-                "controller -- that's what rounds the square's corners.",
+                "Same computed-torque controller as the other labs (M(q),\n"
+                "C(q,qdot), G(q) cancellation), but the goal continuously\n"
+                "traces a circle instead of sitting at one fixed point. IK is\n"
+                "re-solved every tick (warm-started from the previous\n"
+                "solution); the moving reference then passes through the same\n"
+                "critically-damped filter as smooth_trajectory_lab.py before\n"
+                "reaching the controller.",
                 color=(160, 160, 160), wrap=440,
             )
 
@@ -124,25 +123,21 @@ class PathFollowPanel:
                 )
 
             dpg.add_separator()
-            dpg.add_text("Path:")
-            dpg.add_radio_button(
-                ("circle", "square"), tag="shape_radio", default_value="circle",
-                horizontal=True, callback=self._on_shape_change,
-            )
+            dpg.add_text("Circle:")
             dpg.add_combo(
                 ("xz", "xy", "yz"), tag="plane_combo", default_value="xz", width=100,
                 label="Plane (xz = vertical, forward-facing; xy = horizontal; yz = vertical, side-on)",
             )
-            dpg.add_text("Path center (mm):")
+            dpg.add_text("Circle center (mm):")
             with dpg.group(horizontal=True):
                 dpg.add_input_float(label="Cx", tag="center_x", default_value=150.0, width=100)
                 dpg.add_input_float(label="Cy", tag="center_y", default_value=0.0, width=100)
                 dpg.add_input_float(label="Cz", tag="center_z", default_value=150.0, width=100)
             with dpg.group(horizontal=True):
-                dpg.add_input_float(label="Size (radius / side, mm)", tag="path_size", default_value=DEFAULT_SIZE_MM, width=100)
-                dpg.add_input_float(label="Period (s / loop)", tag="path_period", default_value=6.0, width=100)
+                dpg.add_input_float(label="Radius (mm)", tag="path_radius", default_value=DEFAULT_RADIUS_MM, width=100)
+                dpg.add_input_float(label="Period (s / loop)", tag="path_period", default_value=DEFAULT_PERIOD, width=100)
                 dpg.add_input_int(label="Loops", tag="path_loops", default_value=DEFAULT_LOOPS, min_value=1, width=80)
-            dpg.add_button(label="Preview path start pose", width=-1, callback=self._on_preview)
+            dpg.add_button(label="Preview circle start pose", width=-1, callback=self._on_preview)
             dpg.add_text("", tag="ik_status", color=(140, 220, 140), wrap=440)
 
             dpg.add_separator()
@@ -151,9 +146,10 @@ class PathFollowPanel:
                 default_value=DEFAULT_SMOOTHING_TIME, step=0.1, width=150,
             )
             dpg.add_text(
-                "How much the reference lags the path -- larger smooths a\n"
-                "square's corners more (but also cuts the circle's radius\n"
-                "short if it's not small relative to the loop period).",
+                "How much the reference lags the circle -- larger tracks\n"
+                "smoother but cuts the radius short if it's not small\n"
+                "relative to the loop period; smaller tracks tighter but\n"
+                "raises jerk.",
                 color=(160, 160, 160), wrap=440,
             )
 
@@ -171,18 +167,18 @@ class PathFollowPanel:
             dpg.add_text("", tag="gain_units", color=(160, 160, 160), wrap=440)
 
             with dpg.group(horizontal=True):
-                dpg.add_button(label="Run Path", width=230, height=40, callback=self._on_run)
+                dpg.add_button(label="Run Circle", width=230, height=40, callback=self._on_run)
                 dpg.add_button(label="Reset / Torque Off", width=210, height=40, callback=self._on_reset)
 
             dpg.add_text("", tag="run_status", color=(140, 220, 140), wrap=440)
             dpg.add_separator()
 
-            dpg.add_text("History (double-click to reload gains + path):")
+            dpg.add_text("History (double-click to reload gains + circle):")
             dpg.add_listbox([], tag="history_list", num_items=10, width=-1, callback=self._on_history_select)
 
         self._update_gain_units_label()
         self._refresh_history_widget()
-        dpg.set_primary_window("path_main", True)
+        dpg.set_primary_window("circular_main", True)
         dpg.show_viewport()
         dpg.start_dearpygui()
 
@@ -192,16 +188,13 @@ class PathFollowPanel:
             self.torque_link.close()
         dpg.destroy_context()
 
-    # ---------------- mode / shape / gains ----------------
+    # ---------------- mode / gains ----------------
     def _on_mode_change(self, sender, value):
         defaults_kp = SIM_DEFAULT_KP if value == "Simulate" else HW_DEFAULT_KP
         defaults_kd = SIM_DEFAULT_KD if value == "Simulate" else HW_DEFAULT_KD
         self._set_gains(defaults_kp, defaults_kd)
         dpg.configure_item("hw_group", show=(value == "Real Hardware"))
         self._update_gain_units_label()
-
-    def _on_shape_change(self, sender, value):
-        dpg.set_value("path_period", paths.DEFAULT_PERIOD.get(value, 6.0))
 
     def _update_gain_units_label(self):
         if dpg.get_value("mode_radio") == "Simulate":
@@ -229,24 +222,22 @@ class PathFollowPanel:
             dpg.set_value(f"kp_{j}", kp[j])
             dpg.set_value(f"kd_{j}", kd[j])
 
-    def _get_path_params(self):
-        shape = dpg.get_value("shape_radio")
+    def _get_circle_params(self):
         plane = dpg.get_value("plane_combo")
         center = (dpg.get_value("center_x"), dpg.get_value("center_y"), dpg.get_value("center_z"))
-        size = dpg.get_value("path_size")
+        radius = dpg.get_value("path_radius")
         period = dpg.get_value("path_period")
         loops = dpg.get_value("path_loops")
-        return shape, plane, center, size, period, loops
+        return plane, center, radius, period, loops
 
-    def _set_path_params(self, entry):
-        dpg.set_value("shape_radio", entry.get("shape", "circle"))
+    def _set_circle_params(self, entry):
         dpg.set_value("plane_combo", entry.get("plane", "xz"))
         center = entry.get("center", [150.0, 0.0, 150.0])
         dpg.set_value("center_x", center[0])
         dpg.set_value("center_y", center[1])
         dpg.set_value("center_z", center[2])
-        dpg.set_value("path_size", entry.get("size", DEFAULT_SIZE_MM))
-        dpg.set_value("path_period", entry.get("period", 6.0))
+        dpg.set_value("path_radius", entry.get("radius", DEFAULT_RADIUS_MM))
+        dpg.set_value("path_period", entry.get("period", DEFAULT_PERIOD))
         dpg.set_value("path_loops", entry.get("loops", DEFAULT_LOOPS))
         dpg.set_value("smoothing_time", entry.get("smoothing_time", DEFAULT_SMOOTHING_TIME))
 
@@ -257,8 +248,8 @@ class PathFollowPanel:
     def _format_entry(self, h):
         center = h.get("center", [0, 0, 0])
         return (
-            f"[{h.get('mode', 'simulated')}] {h.get('shape', 'circle')}/{h.get('plane', 'xz')} "
-            f"center=({center[0]:g},{center[1]:g},{center[2]:g}) size={h.get('size', 0):g}mm "
+            f"[{h.get('mode', 'simulated')}] {h.get('plane', 'xz')} plane "
+            f"center=({center[0]:g},{center[1]:g},{center[2]:g}) radius={h.get('radius', 0):g}mm "
             f"T={h.get('period', 0):g}s x{h.get('loops', 1)} "
             f"Kp={_fmt_list(h['kp'])} Kd={_fmt_list(h['kd'])}  ({h['timestamp']})"
         )
@@ -267,13 +258,13 @@ class PathFollowPanel:
         for entry in self._history:
             if self._format_entry(entry) == value:
                 self._set_gains(entry["kp"], entry["kd"])
-                self._set_path_params(entry)
+                self._set_circle_params(entry)
                 return
 
     # ---------------- preview ----------------
     def _on_preview(self):
-        shape, plane, center, size, period, _loops = self._get_path_params()
-        xyz = paths.PATHS[shape](0.0, center, size, plane, period)
+        plane, center, radius, period, _loops = self._get_circle_params()
+        xyz = paths.circle_path(0.0, center, radius, plane, period)
         q, reached, err_mm = inverse_kinematics.solve(xyz, initial_guess=self.dynamics.theta)
 
         with self.state.lock:
@@ -282,7 +273,7 @@ class PathFollowPanel:
         status = "reachable" if reached else "NOT fully reachable (showing closest pose)"
         dpg.set_value(
             "ik_status",
-            f"Path start {status}, error={err_mm:.2f} mm at XYZ={tuple(round(v, 1) for v in xyz)}. "
+            f"Circle start {status}, error={err_mm:.2f} mm at XYZ={tuple(round(v, 1) for v in xyz)}. "
             "Ghost arm previews this pose -- during Run it'll track the moving reference instead.",
         )
 
@@ -325,7 +316,7 @@ class PathFollowPanel:
         with self.state.lock:
             self.state.receive_joint_angle[:] = angles
         if self._recording:
-            # self._last_q_ref: the reference _path_updater_loop most
+            # self._last_q_ref: the reference _circle_updater_loop most
             # recently computed and sent -- not exactly synchronous with
             # this telemetry sample (they're separate threads/rates), but
             # it's the actual setpoint in effect at roughly this instant,
@@ -366,18 +357,18 @@ class PathFollowPanel:
         mode = dpg.get_value("mode_radio")
         kp, kd = self._get_gains()
         smoothing_time = dpg.get_value("smoothing_time")
-        shape, plane, center, size, period, loops = self._get_path_params()
+        plane, center, radius, period, loops = self._get_circle_params()
         self._running = True
 
         if mode == "Simulate":
             dpg.set_value(
                 "run_status",
-                f"Running {shape}/{plane} path, size={size:g}mm, T={period:g}s x{loops} "
+                f"Running circle/{plane}, radius={radius:g}mm, T={period:g}s x{loops} "
                 f"(Kp={_fmt_list(kp)}, Kd={_fmt_list(kd)})...",
             )
             threading.Thread(
                 target=self._simulate,
-                args=(kp, kd, smoothing_time, shape, plane, center, size, period, loops),
+                args=(kp, kd, smoothing_time, plane, center, radius, period, loops),
                 daemon=True,
             ).start()
         else:
@@ -389,19 +380,18 @@ class PathFollowPanel:
                 dpg.set_value("run_status", "Firmware never confirmed ready -- reconnect before running.")
                 self._running = False
                 return
-            dpg.set_value("run_status", f"Running {shape}/{plane} path on real hardware...")
+            dpg.set_value("run_status", f"Running circle/{plane} on real hardware...")
             threading.Thread(
                 target=self._run_hardware,
-                args=(kp, kd, smoothing_time, shape, plane, center, size, period, loops),
+                args=(kp, kd, smoothing_time, plane, center, radius, period, loops),
                 daemon=True,
             ).start()
 
     # ---------------- simulate ----------------
-    def _simulate(self, kp, kd, smoothing_time, shape, plane, center, size, period, loops):
+    def _simulate(self, kp, kd, smoothing_time, plane, center, radius, period, loops):
         self.dynamics.reset(HOME_POSE)
         self.trajectory.reset(HOME_POSE)
         self._q_goal_guess = list(HOME_POSE)
-        path_fn = paths.PATHS[shape]
 
         duration = period * loops
         n_steps = int(duration / DT)
@@ -416,7 +406,7 @@ class PathFollowPanel:
 
         for step in range(n_steps):
             t = step * DT
-            xyz = path_fn(t, center, size, plane, period)
+            xyz = paths.circle_path(t, center, radius, plane, period)
             q_goal, _reached, _err_mm = inverse_kinematics.solve(xyz, initial_guess=self._q_goal_guess)
             self._q_goal_guess = q_goal
 
@@ -451,7 +441,7 @@ class PathFollowPanel:
 
             time.sleep(DT)
 
-        self._finish_run(run, kp, kd, smoothing_time, shape, plane, center, size, period, loops, commanded, source="simulated")
+        self._finish_run(run, kp, kd, smoothing_time, plane, center, radius, period, loops, commanded, source="simulated")
 
     # ---------------- real hardware ----------------
     def _gravity_updater_loop(self):
@@ -463,8 +453,7 @@ class PathFollowPanel:
                 self.torque_link.send_gravity([g * scale for g in G])
             time.sleep(GRAVITY_UPDATE_PERIOD)
 
-    def _path_updater_loop(self, shape, plane, center, size, period, smoothing_time):
-        path_fn = paths.PATHS[shape]
+    def _circle_updater_loop(self, plane, center, radius, period, smoothing_time):
         start_wall = time.time()
         last_time = start_wall
         while self._path_running:
@@ -473,7 +462,7 @@ class PathFollowPanel:
             last_time = now
             t = now - start_wall
 
-            xyz = path_fn(t, center, size, plane, period)
+            xyz = paths.circle_path(t, center, radius, plane, period)
             q_goal, _reached, _err_mm = inverse_kinematics.solve(xyz, initial_guess=self._q_goal_guess)
             self._q_goal_guess = q_goal
             q_ref, _qdot_ref, _qddot_ref = self.trajectory.step(dt, q_goal, smoothing_time)
@@ -486,7 +475,7 @@ class PathFollowPanel:
             self._commanded_buffer.append((t, xyz))
             time.sleep(TARGET_UPDATE_PERIOD)
 
-    def _run_hardware(self, kp, kd, smoothing_time, shape, plane, center, size, period, loops):
+    def _run_hardware(self, kp, kd, smoothing_time, plane, center, radius, period, loops):
         self._hw_buffer = []
         self._commanded_buffer = []
         self._recording = True
@@ -504,7 +493,7 @@ class PathFollowPanel:
         threading.Thread(target=self._gravity_updater_loop, daemon=True).start()
         self._path_running = True
         threading.Thread(
-            target=self._path_updater_loop, args=(shape, plane, center, size, period, smoothing_time), daemon=True,
+            target=self._circle_updater_loop, args=(plane, center, radius, period, smoothing_time), daemon=True,
         ).start()
 
         self.torque_link.torque_on()
@@ -518,7 +507,7 @@ class PathFollowPanel:
 
         run = self._process_hw_buffer(self._hw_buffer)
         commanded = [xyz for _t, xyz in self._commanded_buffer]
-        self._finish_run(run, kp, kd, smoothing_time, shape, plane, center, size, period, loops, commanded, source="hardware")
+        self._finish_run(run, kp, kd, smoothing_time, plane, center, radius, period, loops, commanded, source="hardware")
 
     def _process_hw_buffer(self, buffer):
         run = {
@@ -546,16 +535,16 @@ class PathFollowPanel:
         return run
 
     # ---------------- shared completion path ----------------
-    def _finish_run(self, run, kp, kd, smoothing_time, shape, plane, center, size, period, loops, commanded, source):
+    def _finish_run(self, run, kp, kd, smoothing_time, plane, center, radius, period, loops, commanded, source):
         png_path, csv_path = plotting.save_run(
             run, kp, kd, source=source,
-            title=f"Path-follow ({shape}, {plane} plane, size={size:g}mm, T={period:g}s x{loops})",
+            title=f"Circular tracking ({plane} plane, radius={radius:g}mm, T={period:g}s x{loops})",
             commanded_path=commanded,
             target=run.get("target_angle") or None,
         )
         self._history = gain_history.append_history(
             kp, kd, png_path, mode=source, path=HISTORY_FILE,
-            shape=shape, plane=plane, center=list(center), size=size,
+            plane=plane, center=list(center), radius=radius,
             period=period, loops=loops, smoothing_time=smoothing_time,
         )
 

@@ -27,7 +27,35 @@ def _fmt_gains(values):
     return "[" + ", ".join(f"{v:g}" for v in values) + "]"
 
 
-def save_run(run, kp, kd, source="simulated", title="PD run to Basic pose", commanded_path=None):
+def _finite_diff_list(t, values):
+    """values: list[N] of length-4 sequences. Returns d(values)/dt, same
+    shape, via one-sided backward difference (first entry left at 0) --
+    same convention pd_panel.py's _finite_diff uses for hardware
+    velocity/jerk."""
+    n = len(values)
+    out = [[0.0, 0.0, 0.0, 0.0] for _ in range(n)]
+    for i in range(1, n):
+        dt = t[i] - t[i - 1]
+        if dt <= 0:
+            continue
+        out[i] = [(values[i][k] - values[i - 1][k]) / dt for k in range(4)]
+    return out
+
+
+def _tracking_error(t, angle, target):
+    """e_j(t) = target_j(t) - angle_j(t), rad. target is either a single
+    length-4 sequence (fixed-point regulation -- broadcast to every t) or
+    a list of length-4 sequences already aligned 1:1 with t (a moving
+    reference trajectory, e.g. trajectory.py's smoothed target). Returns
+    a list[N] of length-4 lists, N = min(len(t), len(target))."""
+    if len(target) > 0 and not hasattr(target[0], "__len__"):
+        n = len(t)
+        return [[target[j] - angle[i][j] for j in range(4)] for i in range(n)]
+    n = min(len(t), len(target), len(angle))
+    return [[target[i][j] - angle[i][j] for j in range(4)] for i in range(n)]
+
+
+def save_run(run, kp, kd, source="simulated", title="PD run to Basic pose", commanded_path=None, target=None):
     """run: dict of quantity -> list[time][joint] (4 joints), plus run["t"].
     kp/kd: per-joint (length-4) gain sequences. source: "simulated" or
     "hardware" -- controls the torque axis label (N*m estimate vs. real mA).
@@ -35,18 +63,29 @@ def save_run(run, kp, kd, source="simulated", title="PD run to Basic pose", comm
     commanded_path: optional list of XYZ (mm) -- the *reference* end-effector
     path being tracked (e.g. path_follow_lab.py's circle/square), overlaid on
     the actual end-effector trajectory for a visual/quantitative tracking-
-    error comparison. None (the default) reproduces the previous behavior."""
+    error comparison. None (the default) reproduces the previous behavior.
+    target: optional per-joint tracking target, radians -- a single length-4
+    sequence (fixed-point regulation) or a list of length-4 sequences
+    matching run["t"] (a moving reference trajectory). When given, adds
+    "tracking error vs time" (e = target - angle) and "error rate vs time"
+    (de/dt) panels -- e is exactly the signal the PD law (tau = Kp*e +
+    Kd*edot) is driving to zero, and edot is exactly what its Kd term
+    reacts to, so together they're the most direct explanation for what
+    the other panels are reacting to. None (the default) omits them."""
     PLOTS_DIR.mkdir(exist_ok=True)
     stamp = time.strftime("%Y%m%d_%H%M%S")
 
     torque_label = "Torque (N*m, simulated)" if source == "simulated" else "Motor current (mA, measured)"
     panels = _panels(torque_label)
-
-    fig = plt.figure(figsize=(11, 16))
-    fig.suptitle(f"{title} ({source}) -- Kp={_fmt_gains(kp)}, Kd={_fmt_gains(kd)}", y=0.995)
-    gs = fig.add_gridspec(4, 2)
-
     t = run["t"]
+    error = _tracking_error(t, run["angle"], target) if target is not None else None
+
+    n_rows = 5 if error is not None else 4
+    fig = plt.figure(figsize=(11, 19) if error is not None else (11, 16))
+    suptitle_y = 0.997 if error is not None else 0.995
+    fig.suptitle(f"{title} ({source}) -- Kp={_fmt_gains(kp)}, Kd={_fmt_gains(kd)}", y=suptitle_y)
+    gs = fig.add_gridspec(n_rows, 2)
+
     for idx, (key, panel_title) in enumerate(panels):
         ax = fig.add_subplot(gs[idx // 2, idx % 2])
         data = run[key]
@@ -58,8 +97,12 @@ def save_run(run, kp, kd, source="simulated", title="PD run to Basic pose", comm
         ax.legend(fontsize=8)
 
     _add_end_effector_panels(fig, gs, run.get("end_effector", []), commanded_path)
+    error_dot = None
+    if error is not None:
+        error_dot = _finite_diff_list(t[:len(error)], error)
+        _add_error_panels(fig, gs, 4, t[:len(error)], error, error_dot)
 
-    fig.tight_layout(rect=(0, 0, 1, 0.97))
+    fig.tight_layout(rect=(0, 0, 1, 0.98 if error is not None else 0.97))
     png_path = PLOTS_DIR / f"run_{stamp}.png"
     fig.savefig(png_path, dpi=120)
     plt.close(fig)
@@ -74,6 +117,9 @@ def save_run(run, kp, kd, source="simulated", title="PD run to Basic pose", comm
         write_commanded = bool(commanded_path) and len(commanded_path) == len(t)
         if write_commanded:
             header += ["commanded_x", "commanded_y", "commanded_z"]
+        if error is not None:
+            header += [f"error_j{j + 1}" for j in range(4)]
+            header += [f"error_dot_j{j + 1}" for j in range(4)]
         writer.writerow(header)
         ee = run.get("end_effector", [])
         for i, ti in enumerate(t):
@@ -83,9 +129,73 @@ def save_run(run, kp, kd, source="simulated", title="PD run to Basic pose", comm
             row += list(ee[i]) if i < len(ee) else [None, None, None]
             if write_commanded:
                 row += list(commanded_path[i])
+            if error is not None:
+                if i < len(error):
+                    row += list(error[i]) + list(error_dot[i])
+                else:
+                    row += [None] * 8
             writer.writerow(row)
 
     return png_path, csv_path
+
+
+def save_run_with_error(run, kp, kd, target, source, title, out_path):
+    """Same layout as save_run(), plus the tracking-error/error-rate panels
+    -- kept for plot_with_error.py's CLI reload of CSVs saved before
+    save_run() itself started plotting them. Unlike save_run(), this
+    doesn't pick its own filename/timestamp or write a CSV -- callers pass
+    an explicit out_path alongside a run they've already saved."""
+    torque_label = "Torque (N*m, simulated)" if source == "simulated" else "Motor current (mA, measured)"
+    panels = _panels(torque_label)
+
+    fig = plt.figure(figsize=(11, 19))
+    fig.suptitle(f"{title} ({source}) -- Kp={_fmt_gains(kp)}, Kd={_fmt_gains(kd)}", y=0.997)
+    gs = fig.add_gridspec(5, 2, height_ratios=[1, 1, 1, 1, 0.8])
+
+    t = run["t"]
+    for idx, (key, panel_title) in enumerate(panels):
+        ax = fig.add_subplot(gs[idx // 2, idx % 2])
+        data = run[key]
+        for j in range(4):
+            ax.plot(t, [row[j] for row in data], label=f"Joint {j + 1}")
+        ax.set_title(panel_title)
+        ax.set_xlabel("time (s)")
+        ax.grid(True, alpha=0.3)
+        ax.legend(fontsize=8)
+
+    _add_end_effector_panels(fig, gs, run.get("end_effector", []))
+    error = _tracking_error(t, run["angle"], target)
+    error_dot = _finite_diff_list(t[:len(error)], error)
+    _add_error_panels(fig, gs, 4, t[:len(error)], error, error_dot)
+
+    fig.tight_layout(rect=(0, 0, 1, 0.98))
+    fig.savefig(out_path, dpi=120)
+    plt.close(fig)
+
+
+def _add_error_panels(fig, gs, row, t, error, error_dot):
+    """e_j(t) = target_j - angle_j(t) (left) and de_j/dt (right), rad and
+    rad/s -- e is exactly the signal the PD law (tau = Kp*e + Kd*edot) is
+    driving to zero, and edot is exactly what its Kd term reacts to."""
+    ax_e = fig.add_subplot(gs[row, 0])
+    for j in range(4):
+        ax_e.plot(t, [r[j] for r in error], label=f"Joint {j + 1}")
+    ax_e.axhline(0.0, color="black", linewidth=0.8, linestyle="--", alpha=0.6)
+    ax_e.set_title("Tracking error vs. time  --  e = target - angle")
+    ax_e.set_xlabel("time (s)")
+    ax_e.set_ylabel("error (rad)")
+    ax_e.grid(True, alpha=0.3)
+    ax_e.legend(fontsize=8)
+
+    ax_ed = fig.add_subplot(gs[row, 1])
+    for j in range(4):
+        ax_ed.plot(t, [r[j] for r in error_dot], label=f"Joint {j + 1}")
+    ax_ed.axhline(0.0, color="black", linewidth=0.8, linestyle="--", alpha=0.6)
+    ax_ed.set_title("Error rate vs. time  --  edot = d(error)/dt")
+    ax_ed.set_xlabel("time (s)")
+    ax_ed.set_ylabel("error rate (rad/s)")
+    ax_ed.grid(True, alpha=0.3)
+    ax_ed.legend(fontsize=8)
 
 
 def _add_end_effector_panels(fig, gs, end_effector, commanded=None):

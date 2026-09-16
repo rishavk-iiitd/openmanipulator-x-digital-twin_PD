@@ -34,8 +34,26 @@ SIM_DEFAULT_KD = [0.6, 0.6, 0.6, 0.6]
 # the firmware's +-400 mA ceiling. This has no integral/gravity-compensation
 # term, so expect some steady-state droop under gravity -- that's an
 # inherent limit of plain PD, not a bug. Tune per-joint from here.
-HW_DEFAULT_KP = [300.0, 350.0, 350.0, 300.0]
-HW_DEFAULT_KD = [20.0, 25.0, 25.0, 20.0]
+#
+# Joint 3 (elbow) specifically needs far more than this pattern would
+# suggest: at kp3=350 (in line with the other joints) it does NOT just
+# droop, it sustains a ~0.4 rad stick-slip oscillation on the real arm for
+# the entire run (see plots/run_20260810_171540_with_error.png) -- classic
+# signature of commanded current sitting too close to breakaway friction,
+# so it repeatedly sticks, builds error, jerks past it, overshoots, and
+# repeats. Pushing kp3 far higher (well beyond where the other joints need
+# to go) keeps commanded current clear of that stiction band, so it moves
+# smoothly and settles instead of cycling -- confirmed by an actual live
+# tuning session on 2026-08-10 sweeping kp3 up to ~1600-1625 and kd3 back
+# down through 5-50 (see ik_gain_history.json), converging on kp3=1600,
+# kd3=24 as the last, non-oscillating configuration tried (plots/
+# run_20260810_170810_with_error.png: joint 3 settles in ~0.5s, current
+# steady around -170 mA, well inside the +-400 mA ceiling). It still
+# settles with a modest steady-state offset (plain PD, no integral term --
+# if you need tighter final position accuracy, raise the "Gravity comp
+# scale" field in the UI before raising these further).
+HW_DEFAULT_KP = [300.0, 350.0, 1600.0, 300.0]
+HW_DEFAULT_KD = [20.0, 25.0, 24.0, 20.0]
 
 
 def _fmt_list(values):
@@ -357,7 +375,7 @@ class PDLabPanel:
 
     # ---------------- shared completion path ----------------
     def _finish_run(self, run, kp, kd, source):
-        png_path, csv_path = plotting.save_run(run, kp, kd, source=source)
+        png_path, csv_path = plotting.save_run(run, kp, kd, source=source, target=BASIC_POSE)
         self._history = gain_history.append_history(kp, kd, png_path, mode=source)
 
         dpg.set_value("pd_status", f"Done ({source}). Saved {png_path.name} / {csv_path.name}")

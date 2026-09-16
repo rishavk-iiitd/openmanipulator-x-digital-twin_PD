@@ -1,0 +1,326 @@
+[
+  {
+    "timestamp": "2026-08-17 13:19:29",
+    "kp": [
+      0.6000000238418579,
+      0.6000000238418579,
+      0.6000000238418579,
+      0.6000000238418579
+    ],
+    "kd": [
+      0.15000000596046448,
+      0.15000000596046448,
+      0.15000000596046448,
+      0.15000000596046448
+    ],
+    "mode": "simulated",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260817_131928.png",
+    "plane": "xz",
+    "center": [
+      150.0,
+      0.0,
+      150.0
+    ],
+    "radius": 60.0,
+    "period": 6.0,
+    "loops": 2,
+    "smoothing_time": 0.4000000059604645
+  },
+  {
+    "timestamp": "2026-08-17 13:20:11",
+    "kp": [
+      300.0,
+      350.0,
+      1600.0,
+      300.0
+    ],
+    "kd": [
+      20.0,
+      25.0,
+      24.0,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260817_132011.png",
+    "plane": "xz",
+    "center": [
+      150.0,
+      0.0,
+      150.0
+    ],
+    "radius": 60.0,
+    "period": 6.0,
+    "loops": 2,
+    "smoothing_time": 0.4000000059604645
+  },
+  {
+    "timestamp": "2026-08-17 13:20:42",
+    "kp": [
+      300.0,
+      350.0,
+      1600.0,
+      300.0
+    ],
+    "kd": [
+      20.0,
+      25.0,
+      100.0,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260817_132041.png",
+    "plane": "xz",
+    "center": [
+      150.0,
+      0.0,
+      150.0
+    ],
+    "radius": 60.0,
+    "period": 6.0,
+    "loops": 2,
+    "smoothing_time": 0.4000000059604645
+  },
+  {
+    "timestamp": "2026-08-17 13:21:13",
+    "kp": [
+      300.0,
+      350.0,
+      1600.0,
+      300.0
+    ],
+    "kd": [
+      20.0,
+      25.0,
+      75.0,
+      40.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260817_132112.png",
+    "plane": "xz",
+    "center": [
+      150.0,
+      0.0,
+      150.0
+    ],
+    "radius": 60.0,
+    "period": 6.0,
+    "loops": 2,
+    "smoothing_time": 0.4000000059604645
+  },
+  {
+    "timestamp": "2026-08-17 13:21:53",
+    "kp": [
+      300.0,
+      350.0,
+      1600.0,
+      300.0
+    ],
+    "kd": [
+      20.0,
+      25.0,
+      25.0,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260817_132152.png",
+    "plane": "xz",
+    "center": [
+      150.0,
+      0.0,
+      150.0
+    ],
+    "radius": 60.0,
+    "period": 6.0,
+    "loops": 2,
+    "smoothing_time": 0.4000000059604645
+  },
+  {
+    "timestamp": "2026-08-17 13:22:25",
+    "kp": [
+      300.0,
+      350.0,
+      1600.0,
+      300.0
+    ],
+    "kd": [
+      20.0,
+      25.0,
+      25.0,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260817_132224.png",
+    "plane": "xz",
+    "center": [
+      150.0,
+      0.0,
+      150.0
+    ],
+    "radius": 60.0,
+    "period": 6.0,
+    "loops": 2,
+    "smoothing_time": 0.5
+  },
+  {
+    "timestamp": "2026-08-17 13:22:51",
+    "kp": [
+      300.0,
+      500.0,
+      1600.0,
+      300.0
+    ],
+    "kd": [
+      20.0,
+      25.0,
+      25.0,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260817_132251.png",
+    "plane": "xz",
+    "center": [
+      150.0,
+      0.0,
+      150.0
+    ],
+    "radius": 60.0,
+    "period": 6.0,
+    "loops": 2,
+    "smoothing_time": 0.5
+  },
+  {
+    "timestamp": "2026-08-17 13:23:15",
+    "kp": [
+      300.0,
+      500.0,
+      1600.0,
+      400.0
+    ],
+    "kd": [
+      20.0,
+      25.0,
+      25.0,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260817_132315.png",
+    "plane": "xz",
+    "center": [
+      150.0,
+      0.0,
+      150.0
+    ],
+    "radius": 60.0,
+    "period": 6.0,
+    "loops": 2,
+    "smoothing_time": 0.5
+  },
+  {
+    "timestamp": "2026-08-17 14:34:25",
+    "kp": [
+      0.6000000238418579,
+      0.6000000238418579,
+      0.6000000238418579,
+      0.6000000238418579
+    ],
+    "kd": [
+      0.15000000596046448,
+      0.15000000596046448,
+      0.15000000596046448,
+      0.15000000596046448
+    ],
+    "mode": "simulated",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260817_143425.png",
+    "plane": "xz",
+    "center": [
+      150.0,
+      0.0,
+      150.0
+    ],
+    "radius": 60.0,
+    "period": 6.0,
+    "loops": 2,
+    "smoothing_time": 0.5
+  },
+  {
+    "timestamp": "2026-08-17 14:35:19",
+    "kp": [
+      0.6000000238418579,
+      0.6000000238418579,
+      0.6000000238418579,
+      0.6000000238418579
+    ],
+    "kd": [
+      0.15000000596046448,
+      0.15000000596046448,
+      0.15000000596046448,
+      0.15000000596046448
+    ],
+    "mode": "simulated",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260817_143518.png",
+    "plane": "xz",
+    "center": [
+      200.0,
+      100.0,
+      150.0
+    ],
+    "radius": 60.0,
+    "period": 6.0,
+    "loops": 2,
+    "smoothing_time": 0.5
+  },
+  {
+    "timestamp": "2026-08-17 14:35:58",
+    "kp": [
+      300.0,
+      350.0,
+      1600.0,
+      300.0
+    ],
+    "kd": [
+      20.0,
+      25.0,
+      24.0,
+      20.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260817_143557.png",
+    "plane": "xz",
+    "center": [
+      200.0,
+      0.0,
+      150.0
+    ],
+    "radius": 60.0,
+    "period": 6.0,
+    "loops": 2,
+    "smoothing_time": 0.5
+  },
+  {
+    "timestamp": "2026-08-17 14:37:14",
+    "kp": [
+      300.0,
+      350.0,
+      1625.0,
+      300.0
+    ],
+    "kd": [
+      5.0,
+      5.0,
+      40.0,
+      5.0
+    ],
+    "mode": "hardware",
+    "plot": "C:\\Users\\Kumar Rishav\\Desktop\\New folder\\plots\\run_20260817_143713.png",
+    "plane": "xz",
+    "center": [
+      200.0,
+      0.0,
+      150.0
+    ],
+    "radius": 60.0,
+    "period": 6.0,
+    "loops": 2,
+    "smoothing_time": 0.5
+  }
+]
