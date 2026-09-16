@@ -48,12 +48,55 @@ SIM_DEFAULT_KD = [0.6, 0.6, 0.6, 0.6]
 # down through 5-50 (see ik_gain_history.json), converging on kp3=1600,
 # kd3=24 as the last, non-oscillating configuration tried (plots/
 # run_20260810_170810_with_error.png: joint 3 settles in ~0.5s, current
-# steady around -170 mA, well inside the +-400 mA ceiling). It still
-# settles with a modest steady-state offset (plain PD, no integral term --
-# if you need tighter final position accuracy, raise the "Gravity comp
-# scale" field in the UI before raising these further).
+# steady around -170 mA, well inside the ceiling). It still settles with a
+# modest steady-state offset (plain PD, no integral term).
+#
+# These remain the PLAIN-PD numbers, for this lab and the panels that stream
+# their own reference trajectory. They are not what the compensated labs
+# should use -- see HW_GC_* below for why kp3=1600 stops being necessary the
+# moment friction is fed forward instead of overpowered.
 HW_DEFAULT_KP = [300.0, 350.0, 1600.0, 300.0]
 HW_DEFAULT_KD = [20.0, 25.0, 24.0, 20.0]
+
+# ---------------------------------------------------------------------------
+# Fixed per-joint gains for the gravity-compensated PD lab (ik_gravity_panel).
+# CALCULATED, not hand-tuned -- gain_schedule.py does the arithmetic, and
+# `python -m om_python.gain_schedule` reprints it if you want other numbers.
+#
+# For a joint driven by torque, the pair that places its closed loop at a
+# chosen natural frequency and damping ratio is
+#     Kp = omega^2 * J * SCALE          Kd = 2 * zeta * omega * J * SCALE
+# with SCALE = 560.98 mA/N*m (the XM430-W350 torque constant) and J the
+# effective inertia the motor actually feels.
+#
+# J is the one number that had to be measured. It is NOT just M(q) from
+# rigid_body_dynamics.py: each joint also carries its DYNAMIXEL's rotor
+# inertia reflected through a 353.5:1 gearbox, and reflected inertia scales
+# with the SQUARE of the ratio, so that term dominates. Across 216 ringing
+# joint traces in plots/, a joint oscillating under a known Kp gives its
+# inertia directly (omega^2 = Kp/(SCALE*J)); subtracting the link-only M_ii
+# leaves a common 0.011 kg*m^2, which also matches an independent estimate
+# from the motor itself (~6e-8 kg*m^2 rotor x 353.5^2 ~ 0.008).
+#
+#     J = mean over the workspace of diag(M(q)) + 0.011
+#       = [0.0175, 0.0224, 0.0164, 0.0114] kg*m^2
+#     omega = 12 rad/s (1.9 Hz), zeta = 0.9
+#
+# A single fixed pair is enough: with these numbers the achieved damping
+# ratio only moves between 0.66 (arm reaching out) and 0.98 (folded) across
+# the whole workspace, and nothing is underdamped enough to ring. An earlier
+# revision streamed pose-scheduled gains 20x a second to hold zeta exactly
+# constant; measuring the spread showed it was not buying anything worth the
+# extra moving parts.
+#
+# What these DON'T fix is steady-state error. The gearbox absorbs 40-200 mA
+# of stiction before the output shaft moves (measured the same way, by
+# differencing G(q) against the holding current), so the arm parks within
+# roughly stiction/Kp of the target -- a couple of degrees. That is the
+# honest, inherent cost of PD with no integral term. Raising Kp shrinks it;
+# so would an integral term, which is deliberately not here.
+HW_GC_KP = [1100.0, 1600.0, 1300.0, 900.0]
+HW_GC_KD = [165.0, 235.0, 195.0, 135.0]
 
 
 def _fmt_list(values):

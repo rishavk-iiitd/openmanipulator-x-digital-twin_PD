@@ -120,6 +120,16 @@ def save_run(run, kp, kd, source="simulated", title="PD run to Basic pose", comm
         if error is not None:
             header += [f"error_j{j + 1}" for j in range(4)]
             header += [f"error_dot_j{j + 1}" for j in range(4)]
+        # Any extra per-joint series the caller recorded (e.g. the hardware
+        # run's reference angle and the feedforward the firmware reports
+        # actually applying) go into the CSV too. They are not plotted, but
+        # they are what lets a saved run be checked after the fact against
+        # the control law that was supposed to produce it -- the analysis
+        # that revealed gravity compensation had never been reaching the
+        # motors had to reconstruct these; now they are simply recorded.
+        extra_keys = [k for k in ("target_angle", "feedforward") if run.get(k)]
+        for key in extra_keys:
+            header += [f"{key}_j{j + 1}" for j in range(4)]
         writer.writerow(header)
         ee = run.get("end_effector", [])
         for i, ti in enumerate(t):
@@ -134,6 +144,9 @@ def save_run(run, kp, kd, source="simulated", title="PD run to Basic pose", comm
                     row += list(error[i]) + list(error_dot[i])
                 else:
                     row += [None] * 8
+            for key in extra_keys:
+                series = run[key]
+                row += list(series[i]) if i < len(series) else [None] * 4
             writer.writerow(row)
 
     return png_path, csv_path

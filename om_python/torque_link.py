@@ -1,17 +1,27 @@
-"""Serial link for the real-hardware torque-PD firmware
+"""Serial link for the real-hardware torque-control firmware
 (firmware/open_manipulator_torque_pd), a different protocol from
 protocol.py/serial_link.py (which target the stock position-only
 open_manipulator_chain.ino).
 
-Wire protocol (57600 baud):
+Wire protocol (USB CDC):
     PC -> OpenCR
-        gains,kp1,kp2,kp3,kp4,kd1,kd2,kd3,kd4
-        target,j1,j2,j3,j4
-        gravity,g1,g2,g3,g4   (mA feedforward; decays to 0 on firmware if
-                                not refreshed within ~500ms)
+        gains,kp1..kp4,kd1..kd4      (mA per rad, mA per rad/s)
+        target,j1..j4                (rad, immediate setpoint -- no ramp)
+        goto,duration_s,j1..j4       (rad, quintic ramp from the measured angle)
+        gravity,g1..g4               (mA feedforward, applied every tick)
         torque,on | torque,off
     OpenCR -> PC (streamed ~50 Hz)
-        state,t,j1,j2,j3,j4,v1,v2,v3,v4,i1,i2,i3,i4
+        state,t,j1..j4,v1..v4,i1..i4
+        ctl,t,r1..r4,f1..f4,hz,armed
+
+The "ctl" line and the per-command acks exist because the logged runs in
+plots/ proved the gravity feedforward was never actually reaching the
+motors -- measured current matched Kp*error to within one 2.69 mA current
+LSB across all 28 parked runs, and differed from Kp*error + G(q) by 71 mA.
+Nothing in the old protocol could have revealed that, so the firmware now
+reports the gravity feedforward it is really applying (f1..f4) and the
+control rate it is really achieving (hz), and gravity_acks lets a caller
+check that its updates are landing instead of trusting that they are.
 """
 import threading
 
@@ -20,10 +30,15 @@ import serial.tools.list_ports
 
 
 class TorqueLink:
-    def __init__(self, on_state=None):
+    def __init__(self, on_state=None, on_ctl=None):
         """on_state: optional callback(t, angles[4], velocities[4], currents_mA[4])
-        called from the reader thread for every telemetry line received."""
+        called from the reader thread for every telemetry line received.
+        on_ctl: optional callback(t, q_ref[4], applied_ff_mA[4], hz, armed)
+        for the firmware's control-diagnostic line -- reference angle, the
+        feedforward actually applied, and the measured loop rate.
+"""
         self.on_state = on_state
+        self.on_ctl = on_ctl
         self.ser = None
         self._write_lock = threading.Lock()
         self._stop = threading.Event()
@@ -31,7 +46,11 @@ class TorqueLink:
         self.connected = False
         self.ready = False  # True once the firmware's boot line was actually seen
         self.last_state = None  # (t, angles, velocities, currents)
+        self.last_ctl = None    # (t, q_ref, applied_ff, hz, armed)
         self.boot_log = []
+        self.errors = []        # any *_err line the firmware rejected
+        self.acks = {}          # ack name -> count, e.g. {"goto_ack": 1}
+        self.gravity_acks = 0   # proof gravity updates are landing
         self._got_ready = threading.Event()
 
     @staticmethod
@@ -52,6 +71,8 @@ class TorqueLink:
         self.ser = serial.Serial(port, baud, timeout=1)
         self._got_ready.clear()
         self.boot_log = []
+        self.errors = []
+        self.acks = {}
         self.connected = True
 
         self._thread = threading.Thread(target=self._read_loop, daemon=True)
@@ -77,12 +98,28 @@ class TorqueLink:
             self._got_ready.set()
             self.boot_log.append(line)
             return
-        if line.startswith(("bus_init", "ping,")):
+        if line == "gravity_ack":
+            self.gravity_acks += 1
+            self.acks[line] = self.acks.get(line, 0) + 1
+            return
+        if line.endswith("_ack"):
+            # Tracked by name so a caller can tell "the firmware did not
+            # understand this command" (stale flash) from "the command failed".
+            self.acks[line] = self.acks.get(line, 0) + 1
+            return
+        if line.startswith(("bus_init", "ping,", "sync,")):
             self.boot_log.append(line)
             print(f"[torque_link] {line}")
             return
+        if line.endswith("_err"):
+            self.errors.append(line)
+            print(f"[torque_link] REJECTED: {line}")
+            return
 
         parts = line.split(",")
+        if parts[0] == "ctl":
+            self._handle_ctl(parts)
+            return
         if parts[0] != "state":
             print(f"[torque_link] {line}")
             return
@@ -102,6 +139,19 @@ class TorqueLink:
         if self.on_state:
             self.on_state(t, angles, velocities, currents)
 
+    def _handle_ctl(self, parts):
+        try:
+            vals = [float(v) for v in parts[1:12]]
+        except ValueError:
+            return
+        if len(vals) != 11:
+            return
+        t, q_ref, applied_ff = vals[0], vals[1:5], vals[5:9]
+        hz, armed = vals[9], bool(vals[10])
+        self.last_ctl = (t, q_ref, applied_ff, hz, armed)
+        if self.on_ctl:
+            self.on_ctl(t, q_ref, applied_ff, hz, armed)
+
     def _write_line(self, text):
         if not self.ser:
             return
@@ -110,13 +160,22 @@ class TorqueLink:
 
     def send_gains(self, kp, kd):
         vals = list(kp) + list(kd)
-        self._write_line("gains," + ",".join(str(v) for v in vals))
+        self._write_line("gains," + ",".join(f"{float(v):.6g}" for v in vals))
 
     def send_target(self, angles):
-        self._write_line("target," + ",".join(str(a) for a in angles))
+        """Immediate setpoint, no ramp -- for streaming a reference trajectory
+        that is already smooth (path_follow / circular_tracking / smooth_
+        trajectory panels). Use send_goto() for a point-to-point move."""
+        self._write_line("target," + ",".join(f"{float(a):.6g}" for a in angles))
+
+    def send_goto(self, angles, duration_s):
+        """Point-to-point move with a quintic ramp generated on the firmware's
+        fast loop, starting from the joint's measured angle."""
+        vals = [duration_s] + list(angles)
+        self._write_line("goto," + ",".join(f"{float(v):.6g}" for v in vals))
 
     def send_gravity(self, gravity_ma):
-        self._write_line("gravity," + ",".join(str(g) for g in gravity_ma))
+        self._write_line("gravity," + ",".join(f"{float(g):.6g}" for g in gravity_ma))
 
     def torque_on(self):
         self._write_line("torque,on")

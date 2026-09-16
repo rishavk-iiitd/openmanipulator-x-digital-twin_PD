@@ -9,14 +9,52 @@ that joint configuration -- either the simulated "virtual robot", or the
 real arm.
 
 Real Hardware mode reuses firmware/open_manipulator_torque_pd.ino and
-torque_link.py from pd_lab.py. That firmware's fast (100 Hz) position/
-velocity PD loop runs locally on the OpenCR -- serial round-trip latency is
-too slow for a PC-side loop to do that part. Gravity compensation is
-different: G(q) only depends on the arm's current pose, which changes
-slowly, so it's computed here on the PC (using the same M(q)/C(q,qdot)/G(q)
-dynamics -- porting that to the microcontroller isn't practical) and pushed
-over periodically as a "gravity" feedforward the firmware just adds to its
-own PD output.
+torque_link.py from pd_lab.py. That firmware's fast control loop runs
+locally on the OpenCR -- serial round-trip latency is too slow for a PC-side
+loop to do that part. Gravity compensation is different: G(q) only depends
+on the arm's current pose, which changes slowly, so it's computed here on
+the PC (using the same M(q)/C(q,qdot)/G(q) dynamics -- porting that to the
+microcontroller isn't practical) and pushed over periodically as a
+"gravity" feedforward the firmware adds to its own output.
+
+THE CONTROLLER
+--------------
+Plain PD, per joint, running on the OpenCR at 250 Hz:
+
+    i_cmd = Kp*(q_ref - q) + Kd*(qdot_ref - qdot) + G(q)
+
+Kp and Kd are fixed numbers, sent once before a run and not touched while it
+moves. They are CALCULATED rather than hand-tuned -- see pd_panel.HW_GC_KP /
+HW_GC_KD, and `python -m om_python.gain_schedule` to recompute them. G(q) is
+the one feedforward: a current-mode arm with no gravity term simply falls,
+and it is streamed from here at 20 Hz because the PC owns the dynamics model.
+
+There is no integral term, no friction compensation, no acceleration
+feedforward and no pose-scheduled gains. Earlier revisions had all four; each
+one bought a little steady-state accuracy and cost more than it was worth in
+ways that were hard to diagnose from the arm's behaviour. The honest cost of
+leaving them out is a couple of degrees of steady-state error, because the
+gearbox absorbs 40-200 mA of stiction before the output shaft moves.
+
+WHY THE HARDWARE PATH IS INSTRUMENTED
+-------------------------------------
+Replaying every hardware run this panel has ever logged (plots/*.csv, indexed
+by ik_gain_history.json) shows the measured motor current equals Kp*error to
+within 3.3 mA -- one 2.69 mA current LSB -- on all four joints across all 28
+runs that parked stationary, and differs from Kp*error + G(q) by 71 mA. The
+gravity feedforward was never reaching the motors: every run labelled
+"gravity-compensated" was in fact plain PD, which is exactly why the arm
+settled short of its target and needed a hand.
+
+The old code could not have revealed that -- "gravity" was write-only, with
+no ack and no echo. So the hardware path now:
+  * reads the gravity scale ONCE, on the GUI thread, before the worker
+    starts (no DearPyGui call from inside the streaming loop);
+  * checks the firmware's gravity_ack counter after arming and WARNS loudly
+    if compensation is not arriving, instead of quietly producing another
+    plain-PD dataset;
+  * records the gravity feedforward the firmware reports actually applying,
+    plus the reference angle and measured loop rate, into the run CSV;
 """
 import math
 import os
@@ -26,14 +64,24 @@ from pathlib import Path
 
 import dearpygui.dearpygui as dpg
 
-from . import gain_history, inverse_kinematics, kinematics, plotting, rigid_body_dynamics
-from .pd_panel import HW_DEFAULT_KD, HW_DEFAULT_KP, _finite_diff
+from . import (
+    gain_history, gain_schedule, inverse_kinematics, kinematics, plotting,
+    rigid_body_dynamics,
+)
+from .pd_panel import HW_GC_KD, HW_GC_KP, _finite_diff
 from .rigid_body_dynamics import RigidBodyDynamics
 from .torque_link import TorqueLink
 
 HOME_POSE = (0.0, 0.0, 0.0, 0.0)
 DT = 0.01
 DURATION = 6.0
+
+# How long the ramped point-to-point move takes, and how long the controller
+# then holds the target before disarming. The hold is where steady-state
+# accuracy is actually demonstrated -- a move that "arrives" but is measured
+# only at the instant it arrives proves nothing about whether it stays.
+MOVE_DURATION_DEFAULT = 1.5
+SETTLE_DURATION = 4.5
 
 SIM_DEFAULT_KP = [0.6, 0.6, 0.6, 0.6]
 SIM_DEFAULT_KD = [0.15, 0.15, 0.15, 0.15]
@@ -49,7 +97,7 @@ SIM_DEFAULT_KD = [0.15, 0.15, 0.15, 0.15]
 # instead -- close enough that it rarely matters, but this field is still
 # a live UI input if you want to dial it in per your actual supply.
 GRAVITY_SCALE_DEFAULT = 560.98
-GRAVITY_UPDATE_PERIOD = 0.05  # 20 Hz -- G(q) changes slowly, no need for 100 Hz
+GRAVITY_UPDATE_PERIOD = 0.05  # 20 Hz -- G(q) changes slowly, no need for 250 Hz
 
 HISTORY_FILE = Path(__file__).resolve().parent.parent / "ik_gain_history.json"
 
@@ -67,15 +115,30 @@ class IKGravityPanel:
         self._connecting = False
         self._recording = False
         self._gravity_running = False
+        self._gravity_error = None
         self._hw_buffer = []
         self._ik_solved = False
         self._target_angles = list(HOME_POSE)
         self._target_xyz = (0.0, 0.0, 0.0)
+        self._run_warning = None
         self._history = gain_history.load_history(HISTORY_FILE)
 
     def run(self):
+        self.build_ui()
+        dpg.show_viewport()
+        dpg.start_dearpygui()
+
+        self._gravity_running = False
+        if self.torque_link:
+            self.torque_link.close()
+        dpg.destroy_context()
+
+    def build_ui(self):
+        """Everything except the blocking render loop, so a smoke test can
+        construct the whole panel and catch a missing widget tag without
+        opening a window."""
         dpg.create_context()
-        dpg.create_viewport(title="Gravity-Compensated PD (XYZ target)", width=480, height=980)
+        dpg.create_viewport(title="Gravity-Compensated PD (XYZ target)", width=520, height=1040)
         dpg.setup_dearpygui()
 
         with dpg.window(tag="ik_main", no_close=True, no_collapse=True):
@@ -83,7 +146,7 @@ class IKGravityPanel:
             dpg.add_text(
                 "Stage 1: solve IK for a target XYZ. Stage 2: computed-torque\n"
                 "PD (M(q), C(q,qdot), G(q)) drives the arm there.",
-                color=(160, 160, 160), wrap=440,
+                color=(160, 160, 160), wrap=480,
             )
 
             dpg.add_radio_button(
@@ -96,12 +159,16 @@ class IKGravityPanel:
                     dpg.add_input_text(label="COM port", tag="hw_port", default_value="COM3", width=100)
                     dpg.add_button(label="Connect", callback=self._on_connect)
                     dpg.add_button(label="EMERGENCY TORQUE OFF", callback=self._on_emergency_stop, width=200)
-                dpg.add_text("Not connected.", tag="hw_status", color=(255, 140, 140), wrap=440)
-                dpg.add_input_float(
-                    label="Gravity comp scale (mA per N*m)", tag="gravity_scale",
-                    default_value=GRAVITY_SCALE_DEFAULT, step=25.0, width=150,
-                )
-
+                dpg.add_text("Not connected.", tag="hw_status", color=(255, 140, 140), wrap=480)
+                with dpg.group(horizontal=True):
+                    dpg.add_input_float(
+                        label="Gravity scale (mA/N*m)", tag="gravity_scale",
+                        default_value=GRAVITY_SCALE_DEFAULT, step=25.0, width=130,
+                    )
+                    dpg.add_input_float(
+                        label="Move time (s)", tag="move_duration",
+                        default_value=MOVE_DURATION_DEFAULT, step=0.25, width=110,
+                    )
             dpg.add_separator()
 
             dpg.add_text("Target end-effector position (mm):")
@@ -110,10 +177,10 @@ class IKGravityPanel:
                 dpg.add_input_float(label="Y", tag="target_y", default_value=0.0, width=100)
                 dpg.add_input_float(label="Z", tag="target_z", default_value=150.0, width=100)
             dpg.add_button(label="Solve IK (preview target pose)", width=-1, callback=self._on_solve_ik)
-            dpg.add_text("", tag="ik_status", color=(140, 220, 140), wrap=440)
+            dpg.add_text("", tag="ik_status", color=(140, 220, 140), wrap=480)
 
             dpg.add_separator()
-            dpg.add_text("Per-joint gains:")
+            dpg.add_text("Per-joint gains (mA/rad, mA/(rad/s)):")
             with dpg.table(header_row=True):
                 dpg.add_table_column(label="Joint")
                 dpg.add_table_column(label="Kp")
@@ -123,13 +190,14 @@ class IKGravityPanel:
                         dpg.add_text(f"Joint {j + 1}")
                         dpg.add_input_float(tag=f"kp_{j}", default_value=SIM_DEFAULT_KP[j], step=0.05, width=-1)
                         dpg.add_input_float(tag=f"kd_{j}", default_value=SIM_DEFAULT_KD[j], step=0.02, width=-1)
-            dpg.add_text("", tag="gain_units", color=(160, 160, 160), wrap=440)
+            dpg.add_text("", tag="gain_units", color=(160, 160, 160), wrap=480)
 
             with dpg.group(horizontal=True):
-                dpg.add_button(label="Run to Target", width=230, height=40, callback=self._on_run)
-                dpg.add_button(label="Reset / Torque Off", width=210, height=40, callback=self._on_reset)
+                dpg.add_button(label="Run to Target", width=250, height=40, callback=self._on_run)
+                dpg.add_button(label="Reset / Torque Off", width=230, height=40, callback=self._on_reset)
 
-            dpg.add_text("", tag="run_status", color=(140, 220, 140), wrap=440)
+            dpg.add_text("", tag="run_status", color=(140, 220, 140), wrap=480)
+            dpg.add_text("", tag="ctl_status", color=(150, 190, 255), wrap=480)
             dpg.add_separator()
 
             dpg.add_text("History (double-click to reload gains + target):")
@@ -138,20 +206,15 @@ class IKGravityPanel:
         self._update_gain_units_label()
         self._refresh_history_widget()
         dpg.set_primary_window("ik_main", True)
-        dpg.show_viewport()
-        dpg.start_dearpygui()
-
-        self._gravity_running = False
-        if self.torque_link:
-            self.torque_link.close()
-        dpg.destroy_context()
 
     # ---------------- mode / gains ----------------
     def _on_mode_change(self, sender, value):
-        defaults_kp = SIM_DEFAULT_KP if value == "Simulate" else HW_DEFAULT_KP
-        defaults_kd = SIM_DEFAULT_KD if value == "Simulate" else HW_DEFAULT_KD
-        self._set_gains(defaults_kp, defaults_kd)
-        dpg.configure_item("hw_group", show=(value == "Real Hardware"))
+        hardware = value == "Real Hardware"
+        if hardware:
+            self._set_gains(HW_GC_KP, HW_GC_KD)
+        else:
+            self._set_gains(SIM_DEFAULT_KP, SIM_DEFAULT_KD)
+        dpg.configure_item("hw_group", show=hardware)
         self._update_gain_units_label()
 
     def _update_gain_units_label(self):
@@ -166,9 +229,11 @@ class IKGravityPanel:
         else:
             dpg.set_value(
                 "gain_units",
-                "Units: Kp in mA/rad, Kd in mA/(rad/s) -- same scale as pd_lab.py's\n"
-                "hardware mode, since it's the same firmware PD loop. Gravity\n"
-                "compensation is added on top as a separate feedforward term.",
+                "Units: Kp in mA/rad, Kd in mA/(rad/s) -- the same current space the\n"
+                "firmware control loop works in. PD only, no integral term: gravity\n"
+                "and friction are added on top as feedforward, computed from the\n"
+                "reference and the arm's physics, never from accumulated error, so\n"
+                "the loop closed around the arm is still exactly Kp/Kd.",
             )
 
     def _get_gains(self):
@@ -238,7 +303,7 @@ class IKGravityPanel:
 
     def _connect_thread(self, port):
         try:
-            link = TorqueLink(on_state=self._on_hw_state)
+            link = TorqueLink(on_state=self._on_hw_state, on_ctl=self._on_hw_ctl)
             ready = link.connect(port)
         except Exception as exc:
             dpg.set_value("hw_status", f"Connect failed: {exc}")
@@ -261,14 +326,26 @@ class IKGravityPanel:
         with self.state.lock:
             self.state.receive_joint_angle[:] = angles
         if self._recording:
-            self._hw_buffer.append((t, list(angles), list(velocities), list(currents)))
+            # last_ctl is this same tick's data: the firmware prints "ctl"
+            # immediately before "state" precisely so these line up.
+            ctl = self.torque_link.last_ctl if self.torque_link else None
+            q_ref = list(ctl[1]) if ctl else list(angles)
+            applied_ff = list(ctl[2]) if ctl else [0.0] * 4
+            self._hw_buffer.append(
+                (t, list(angles), list(velocities), list(currents), q_ref, applied_ff)
+            )
+
+    def _on_hw_ctl(self, t, q_ref, applied_ff, hz, armed):
+        if self._running:
+            with self.state.lock:
+                self.state.ctrl_joint_angle[:] = list(q_ref)
 
     def _on_emergency_stop(self):
         self._recording = False
         self._gravity_running = False
         self._running = False
         if self.torque_link:
-            self.torque_link.torque_off()
+            self.torque_link.torque_off()  # also abandons any running probe
             dpg.set_value("hw_status", "TORQUE OFF sent -- holding position.")
         dpg.set_value("run_status", "Emergency stop.")
 
@@ -287,6 +364,14 @@ class IKGravityPanel:
                 dpg.set_value("hw_status", "Torque off -- holding position.")
             else:
                 dpg.set_value("hw_status", "Not connected.")
+
+    def _hw_settings(self):
+        """Every hardware setting, read here on the GUI thread so the worker
+        threads never touch DearPyGui."""
+        return {
+            "gravity_scale": dpg.get_value("gravity_scale"),
+            "move_duration": max(0.0, dpg.get_value("move_duration")),
+        }
 
     def _on_run(self):
         if self._running:
@@ -312,8 +397,14 @@ class IKGravityPanel:
                 dpg.set_value("run_status", "Firmware never confirmed ready -- reconnect before running.")
                 self._running = False
                 return
+
+            # Everything the worker needs is read here, on the GUI thread, so
+            # the streaming loops never touch DearPyGui (see module docstring).
+            settings = self._hw_settings()
             dpg.set_value("run_status", f"Running to XYZ={self._target_xyz} on real hardware...")
-            threading.Thread(target=self._run_hardware, args=(kp, kd), daemon=True).start()
+            threading.Thread(
+                target=self._run_hardware, args=(kp, kd, settings), daemon=True,
+            ).start()
 
     # ---------------- simulate ----------------
     def _simulate(self, kp, kd):
@@ -360,51 +451,208 @@ class IKGravityPanel:
         self._finish_run(run, kp, kd, source="simulated")
 
     # ---------------- real hardware ----------------
-    def _gravity_updater_loop(self):
-        while self._gravity_running:
-            if self.torque_link and self.torque_link.last_state:
-                _, angles, _velocities, _currents = self.torque_link.last_state
-                G = rigid_body_dynamics.gravity_vector(angles)
-                scale = dpg.get_value("gravity_scale")
-                self.torque_link.send_gravity([g * scale for g in G])
-            time.sleep(GRAVITY_UPDATE_PERIOD)
+    def _gravity_updater_loop(self, settings):
+        """Streams G(q) as a current feedforward, 20x a second. This is the
+        ONLY thing the PC computes for the running loop -- the PD itself lives
+        entirely on the firmware, because a serial round trip per control tick
+        would be far slower than the 250 Hz the OpenCR closes at.
 
-    def _run_hardware(self, kp, kd):
+        settings is a plain dict captured on the GUI thread; no DearPyGui call
+        happens in here, which is the one plausible PC-side way the old loop
+        could have died silently. Any exception is captured so the run can
+        report it instead of producing another uncompensated dataset.
+        """
+        scale = settings["gravity_scale"]
+        try:
+            while self._gravity_running:
+                if self.torque_link and self.torque_link.last_state:
+                    q = self.torque_link.last_state[1]
+                    G = rigid_body_dynamics.gravity_vector(q)
+                    self.torque_link.send_gravity([float(g) * scale for g in G])
+                time.sleep(GRAVITY_UPDATE_PERIOD)
+        except Exception as exc:  # noqa: BLE001 -- surfaced in the UI below
+            self._gravity_error = repr(exc)
+            self._gravity_running = False
+
+    def _run_hardware(self, kp, kd, settings):
+        """Wrapped so that ANY failure still disarms. This runs on a worker
+        thread, where an uncaught exception would otherwise leave the arm
+        energised in current mode with the panel's _running flag stuck True --
+        no further runs accepted, and no torque_off ever sent."""
+        try:
+            self._run_hardware_inner(kp, kd, settings)
+        except Exception as exc:  # noqa: BLE001 -- reported in the UI
+            try:
+                if self.torque_link:
+                    self.torque_link.torque_off()
+            except Exception:
+                pass
+            dpg.set_value("run_status", f"Run failed, torque off sent: {exc!r}")
+        finally:
+            self._recording = False
+            self._gravity_running = False
+            self._running = False
+
+    def _run_hardware_inner(self, kp, kd, settings):
         target = self._target_angles
+        link = self.torque_link
         self._hw_buffer = []
-        self._recording = True
+        self._gravity_error = None
+        self._run_warning = None
+
+        # Sent once. These are the gains for the whole run -- nothing
+        # recomputes or overwrites them while it is moving.
+        link.send_gains(kp, kd)
+
+        # Gravity first, so the arm is already being held up at the instant it
+        # is armed rather than sagging and then being caught.
         self._gravity_running = True
-        threading.Thread(target=self._gravity_updater_loop, daemon=True).start()
+        threading.Thread(
+            target=self._gravity_updater_loop, args=(settings,), daemon=True,
+        ).start()
+        time.sleep(0.2)
 
-        with self.state.lock:
-            self.state.ctrl_joint_angle[:] = target
+        acks_before = link.gravity_acks
+        link.torque_on()
+        time.sleep(0.4)
 
-        self.torque_link.send_gains(kp, kd)
-        self.torque_link.send_target(target)
-        self.torque_link.torque_on()
+        warning = self._compensation_warning(link, acks_before)
+        rate_note = self._enforce_rate_safe_gains(link, kp, kd)
+        if rate_note:
+            warning = rate_note if not warning else f"{warning}  ALSO: {rate_note}" 
 
-        time.sleep(DURATION)
+        # Arming latches the setpoint to the measured angle, so this cannot
+        # kick; the ramp starts from where the arm actually is.
+        self._recording = True
+        goto_acks_before = link.acks.get("goto_ack", 0)
+        link.send_goto(target, settings["move_duration"])
+        time.sleep(0.3)
 
-        self.torque_link.torque_off()
+        if link.acks.get("goto_ack", 0) <= goto_acks_before:
+            # The firmware never acknowledged the move command at all. That is
+            # not a tuning problem -- it is an OpenCR still running the old
+            # sketch, which has no "goto" and will therefore never move.
+            link.torque_off()
+            self._recording = False
+            self._gravity_running = False
+            self._running = False
+            dpg.set_value(
+                "run_status",
+                "The firmware did not acknowledge 'goto', so the arm was never "
+                "commanded to move. The OpenCR is still running the previous "
+                "sketch -- reflash firmware/open_manipulator_torque_pd before "
+                "running again.",
+            )
+            return
+
+        self._run_warning = warning
+        if warning:
+            dpg.set_value("run_status", f"RUNNING, but: {warning}")
+
+        time.sleep(settings["move_duration"] + SETTLE_DURATION)
+
+        link.torque_off()
         self._recording = False
         self._gravity_running = False
 
+        self._report_ctl_status(link)
         run = self._process_hw_buffer(self._hw_buffer)
-        self._finish_run(run, kp, kd, source="hardware")
+        self._finish_run(run, kp, kd, source="hardware", settings=settings)
+
+    # Fraction of the discrete stability limit the damping term is allowed to
+    # use. Kd*T/J = 2 is the hard limit for an explicitly-evaluated derivative
+    # on a double integrator; 0.4 leaves a wide margin.
+    KD_RATE_MARGIN = 0.4
+
+    def _enforce_rate_safe_gains(self, link, kp, kd):
+        """Kd and the control period are not independent. A derivative term
+        evaluated every T seconds behaves like real damping only while
+        Kd*T/J stays well under 2 -- past that it overshoots each sample and
+        the joint shakes itself apart. Kd here is sized for the 250 Hz the
+        firmware targets, so if the loop is actually running slower (a failed
+        sync-read drops it to ~20 Hz on the old per-joint path, a 12x hit)
+        the SAME gains become violently unstable, and it shows up worst once
+        the arm arrives and velocity feedback is all that is left acting.
+
+        So rather than trust the rate, read what the firmware reports it is
+        achieving and scale Kd to what that rate can actually support.
+        """
+        ctl = link.last_ctl
+        if not ctl:
+            return None
+        hz = ctl[3]
+        if hz <= 1.0:
+            return None
+        J = gain_schedule.effective_inertia(self._target_angles)
+        kd_max = [self.KD_RATE_MARGIN * J[i] * gain_schedule.TORQUE_TO_CURRENT * hz
+                  for i in range(4)]
+        over = [i for i in range(4) if kd[i] > kd_max[i]]
+        if not over:
+            return None
+        safe_kd = [min(kd[i], kd_max[i]) for i in range(4)]
+        link.send_gains(kp, safe_kd)
+        self._set_gains(kp, safe_kd)
+        return (
+            f"the control loop is only achieving {hz:.0f} Hz, not the 250 Hz these "
+            f"gains assume, so Kd on joint(s) {[i + 1 for i in over]} would be "
+            f"unstable and was reduced to {_fmt_list([round(v) for v in safe_kd])}. "
+            "Expect sluggish damping until the loop rate is fixed -- check the "
+            "console for 'warn,read_failures', which means the sync-read is "
+            "falling back to the slow per-joint path."
+        )
+
+    def _compensation_warning(self, link, acks_before):
+        """Returns a description of why gravity compensation is not live, or
+        None if it is. The run proceeds either way -- an uncompensated run is
+        worse than no run only if you cannot tell which one you got, and this
+        plus the feedforward column in the CSV make that unmistakable."""
+        if self._gravity_error:
+            return f"the gravity loop raised {self._gravity_error}"
+        if link.errors:
+            return f"firmware rejected commands: {link.errors[-3:]}"
+        if link.gravity_acks <= acks_before:
+            return (
+                "the firmware acknowledged no gravity updates, so compensation is "
+                "not reaching the motors -- the exact failure that made every "
+                "previous 'compensated' run actually plain PD. Expect the arm to "
+                "sag and stop short."
+            )
+        ctl = link.last_ctl
+        if ctl and not any(abs(f) > 0.0 for f in ctl[2]):
+            return "the firmware reports a zero feedforward even though updates are arriving"
+        return None
+
+    def _report_ctl_status(self, link):
+        ctl = link.last_ctl
+        if not ctl:
+            dpg.set_value("ctl_status", "No control diagnostics received (old firmware?).")
+            return
+        _t, _q_ref, applied_ff, hz, _armed = ctl
+        dpg.set_value(
+            "ctl_status",
+            f"Control loop {hz:.0f} Hz | gravity acks {link.gravity_acks} | "
+            f"gravity feedforward {_fmt_list([round(f) for f in applied_ff])} mA"
+            + (f" | firmware rejections: {link.errors[-2:]}" if link.errors else ""),
+        )
 
     def _process_hw_buffer(self, buffer):
-        run = {"t": [], "angle": [], "position": [], "angular_velocity": [], "torque": [], "end_effector": []}
+        run = {
+            "t": [], "angle": [], "position": [], "angular_velocity": [],
+            "torque": [], "end_effector": [], "target_angle": [], "feedforward": [],
+        }
         if not buffer:
             run["velocity"] = []
             run["jerk"] = []
             return run
 
         t0 = buffer[0][0]
-        for t, angles, velocities, currents in buffer:
+        for t, angles, velocities, currents, q_ref, applied_ff in buffer:
             run["t"].append(t - t0)
             run["angle"].append(angles)
             run["angular_velocity"].append(velocities)
             run["torque"].append(currents)
+            run["target_angle"].append(q_ref)
+            run["feedforward"].append(applied_ff)
             run["position"].append([math.dist((0, 0, 0), p) for p in kinematics.joint_positions(angles)])
             run["end_effector"].append(kinematics.gripper_center(angles, (0, 0, 0), 0.0))
 
@@ -414,19 +662,32 @@ class IKGravityPanel:
         return run
 
     # ---------------- shared completion path ----------------
-    def _finish_run(self, run, kp, kd, source):
+    def _finish_run(self, run, kp, kd, source, settings=None):
         xyz_rounded = tuple(round(v, 1) for v in self._target_xyz)
         title = f"PD run to XYZ={xyz_rounded} (gravity-compensated)"
+
+        # On hardware the reference is the ramp the firmware actually followed,
+        # so tracking error is measured against the trajectory that was really
+        # commanded rather than against a step the arm was never asked to take.
+        target = run.get("target_angle") or self._target_angles
         png_path, csv_path = plotting.save_run(
-            run, kp, kd, source=source, title=title, target=self._target_angles,
+            run, kp, kd, source=source, title=title, target=target,
         )
 
+        extra = {"target_xyz": list(self._target_xyz)}
+        if settings is not None:
+            extra["move_duration"] = settings["move_duration"]
         self._history = gain_history.append_history(
-            kp, kd, png_path, mode=source, path=HISTORY_FILE,
-            target_xyz=list(self._target_xyz),
+            kp, kd, png_path, mode=source, path=HISTORY_FILE, **extra
         )
 
-        dpg.set_value("run_status", f"Done ({source}). Saved {png_path.name} / {csv_path.name}")
+        done = f"Done ({source}). Saved {png_path.name} / {csv_path.name}"
+        # A warning raised at the start of the run must survive to the end --
+        # otherwise "Done" quietly replaces "gravity never arrived", which is
+        # exactly how an uncompensated run gets mistaken for a valid one.
+        if self._run_warning:
+            done += f"  --  BUT: {self._run_warning}"
+        dpg.set_value("run_status", done)
         self._refresh_history_widget()
         try:
             os.startfile(str(png_path))
